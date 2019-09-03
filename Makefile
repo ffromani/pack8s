@@ -1,23 +1,17 @@
-all: fmt build
+all: build
 
-build: fmt
-	bazel run //:gazelle
-	bazel build //:cli
+build:
+	cd cmd && go build -v .
+
+deps:
+	dep ensure
 
 fmt:
 	go fmt ./cmd/...
-	go fmt ./docker/...
-
-container: fmt
-	bazel build //:gocli
-
-container-run: fmt
-	bazel run //:gocli
-
-push: fmt
-	bazel run //:push-all
+	go fmt ./iopodman/...
 
 generate:
 	dep ensure
 	go generate ./...
-	bazel run //:gazelle
+
+prep: deps generate fmt
