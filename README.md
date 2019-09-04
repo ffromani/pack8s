@@ -18,3 +18,6 @@ make
 
 Or fetch one of the releases.
 
+## container image
+No available. `pack8s` is meant to be a single, self contained, statically linked executable, so benefits of a container image are unclear.
+Contributions welcome, though.
