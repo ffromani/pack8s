@@ -1,5 +1,3 @@
-# this is https://raw.githubusercontent.com/containers/libpod/v1.4.3/cmd/podman/varlink/io.podman.varlink
-#
 # Podman Service Interface and API description.  The master version of this document can be found
 # in the [API.md](https://github.com/containers/libpod/blob/master/API.md) file in the upstream libpod repository.
 interface io.podman
@@ -71,7 +69,8 @@ type Image (
   containers: int,
   labels: [string]string,
   isParent: bool,
-  topLayer: string
+  topLayer: string,
+  readOnly: bool
 )
 
 # ImageHistory describes the returned structure from ImageHistory.
@@ -146,10 +145,11 @@ type PsOpts (
     last: ?int,
     latest: ?bool,
     noTrunc: ?bool,
-	pod: ?bool,
-	quiet: ?bool,
-	sort: ?string,
-	sync: ?bool
+    pod: ?bool,
+    quiet: ?bool,
+    size: ?bool,
+    sort: ?string,
+    sync: ?bool
 )
 
 type PsContainer (
@@ -228,7 +228,8 @@ type InfoHost (
     hostname: string,
     kernel: string,
     os: string,
-    uptime: string
+    uptime: string,
+    eventlogger: string
 )
 
 # InfoGraphStatus describes the detailed status of the storage driver
@@ -498,6 +499,25 @@ type DiffInfo(
     path: string,
     # Add, Delete, Modify
     changeType: string
+)
+
+type ExecOpts(
+    # container name or id
+    name: string,
+    # Create pseudo tty
+    tty: bool,
+    # privileged access in container
+    privileged: bool,
+    # command to execute in container
+    cmd: []string,
+    # user to use in container
+    user: ?string,
+    # workdir to run command in container
+    workdir: ?string,
+    # slice of keyword=value environment variables
+    env: ?[]string,
+    # string of detach keys
+    detachKeys: ?string
 )
 
 # GetVersion returns version and build information of the podman service
@@ -1100,6 +1120,9 @@ method ContainerRestore(name: string, keep: bool, tcpEstablished: bool) -> (id: 
 # ContainerRunlabel runs executes a command as described by a given container image label.
 method ContainerRunlabel(runlabel: Runlabel) -> ()
 
+# ExecContainer executes a command in the given container.
+method ExecContainer(opts: ExecOpts) -> ()
+
 # ListContainerMounts gathers all the mounted container mount points and returns them as an array
 # of strings
 # #### Example
@@ -1254,3 +1277,6 @@ error WantsMoreRequired (reason: string)
 
 # Container is already stopped
 error ErrCtrStopped (id: string)
+
+# This function requires CGroupsV2 to run in rootless mode.
+error ErrRequiresCgroupsV2ForRootless(reason: string)
