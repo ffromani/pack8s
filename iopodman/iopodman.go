@@ -1,7 +1,6 @@
 // Generated with github.com/varlink/go/cmd/varlink-go-interface-generator
 
-// this is https://raw.githubusercontent.com/containers/libpod/v1.4.3/cmd/podman/varlink/io.podman.varlink
-// # Podman Service Interface and API description.  The master version of this document can be found
+// Podman Service Interface and API description.  The master version of this document can be found
 // in the [API.md](https://github.com/containers/libpod/blob/master/API.md) file in the upstream libpod repository.
 package iopodman
 
@@ -80,6 +79,7 @@ type Image struct {
 	Labels      map[string]string `json:"labels"`
 	IsParent    bool              `json:"isParent"`
 	TopLayer    string            `json:"topLayer"`
+	ReadOnly    bool              `json:"readOnly"`
 }
 
 // ImageHistory describes the returned structure from ImageHistory.
@@ -156,6 +156,7 @@ type PsOpts struct {
 	NoTrunc *bool     `json:"noTrunc,omitempty"`
 	Pod     *bool     `json:"pod,omitempty"`
 	Quiet   *bool     `json:"quiet,omitempty"`
+	Size    *bool     `json:"size,omitempty"`
 	Sort    *string   `json:"sort,omitempty"`
 	Sync    *bool     `json:"sync,omitempty"`
 }
@@ -237,6 +238,7 @@ type InfoHost struct {
 	Kernel          string           `json:"kernel"`
 	Os              string           `json:"os"`
 	Uptime          string           `json:"uptime"`
+	Eventlogger     string           `json:"eventlogger"`
 }
 
 // InfoGraphStatus describes the detailed status of the storage driver
@@ -499,6 +501,17 @@ type DiffInfo struct {
 	ChangeType string `json:"changeType"`
 }
 
+type ExecOpts struct {
+	Name       string    `json:"name"`
+	Tty        bool      `json:"tty"`
+	Privileged bool      `json:"privileged"`
+	Cmd        []string  `json:"cmd"`
+	User       *string   `json:"user,omitempty"`
+	Workdir    *string   `json:"workdir,omitempty"`
+	Env        *[]string `json:"env,omitempty"`
+	DetachKeys *string   `json:"detachKeys,omitempty"`
+}
+
 // ImageNotFound means the image could not be found by the provided name or ID in local storage.
 type ImageNotFound struct {
 	Id     string `json:"id"`
@@ -612,6 +625,15 @@ type ErrCtrStopped struct {
 
 func (e ErrCtrStopped) Error() string {
 	return "io.podman.ErrCtrStopped"
+}
+
+// This function requires CGroupsV2 to run in rootless mode.
+type ErrRequiresCgroupsV2ForRootless struct {
+	Reason string `json:"reason"`
+}
+
+func (e ErrRequiresCgroupsV2ForRootless) Error() string {
+	return "io.podman.ErrRequiresCgroupsV2ForRootless"
 }
 
 func Dispatch_Error(err error) error {
@@ -744,6 +766,17 @@ func Dispatch_Error(err error) error {
 				return e
 			}
 			var param ErrCtrStopped
+			err := json.Unmarshal(*errorRawParameters, &param)
+			if err != nil {
+				return e
+			}
+			return &param
+		case "io.podman.ErrRequiresCgroupsV2ForRootless":
+			errorRawParameters := e.Parameters.(*json.RawMessage)
+			if errorRawParameters == nil {
+				return e
+			}
+			var param ErrRequiresCgroupsV2ForRootless
 			err := json.Unmarshal(*errorRawParameters, &param)
 			if err != nil {
 				return e
@@ -3551,6 +3584,39 @@ func (m ContainerRunlabel_methods) Send(c *varlink.Connection, flags uint64, run
 	}, nil
 }
 
+// ExecContainer executes a command in the given container.
+type ExecContainer_methods struct{}
+
+func ExecContainer() ExecContainer_methods { return ExecContainer_methods{} }
+
+func (m ExecContainer_methods) Call(c *varlink.Connection, opts_in_ ExecOpts) (err_ error) {
+	receive, err_ := m.Send(c, 0, opts_in_)
+	if err_ != nil {
+		return
+	}
+	_, err_ = receive()
+	return
+}
+
+func (m ExecContainer_methods) Send(c *varlink.Connection, flags uint64, opts_in_ ExecOpts) (func() (uint64, error), error) {
+	var in struct {
+		Opts ExecOpts `json:"opts"`
+	}
+	in.Opts = opts_in_
+	receive, err := c.Send("io.podman.ExecContainer", in, flags)
+	if err != nil {
+		return nil, err
+	}
+	return func() (flags uint64, err error) {
+		flags, err = receive(nil)
+		if err != nil {
+			err = Dispatch_Error(err)
+			return
+		}
+		return
+	}, nil
+}
+
 // ListContainerMounts gathers all the mounted container mount points and returns them as an array
 // of strings
 // #### Example
@@ -4632,6 +4698,7 @@ type iopodmanInterface interface {
 	ContainerCheckpoint(c VarlinkCall, name_ string, keep_ bool, leaveRunning_ bool, tcpEstablished_ bool) error
 	ContainerRestore(c VarlinkCall, name_ string, keep_ bool, tcpEstablished_ bool) error
 	ContainerRunlabel(c VarlinkCall, runlabel_ Runlabel) error
+	ExecContainer(c VarlinkCall, opts_ ExecOpts) error
 	ListContainerMounts(c VarlinkCall) error
 	MountContainer(c VarlinkCall, name_ string) error
 	UnmountContainer(c VarlinkCall, name_ string, force_ bool) error
@@ -4756,6 +4823,13 @@ func (c *VarlinkCall) ReplyErrCtrStopped(id_ string) error {
 	var out ErrCtrStopped
 	out.Id = id_
 	return c.ReplyError("io.podman.ErrCtrStopped", &out)
+}
+
+// This function requires CGroupsV2 to run in rootless mode.
+func (c *VarlinkCall) ReplyErrRequiresCgroupsV2ForRootless(reason_ string) error {
+	var out ErrRequiresCgroupsV2ForRootless
+	out.Reason = reason_
+	return c.ReplyError("io.podman.ErrRequiresCgroupsV2ForRootless", &out)
 }
 
 // Generated reply methods for all varlink methods
@@ -5261,6 +5335,10 @@ func (c *VarlinkCall) ReplyContainerRestore(id_ string) error {
 }
 
 func (c *VarlinkCall) ReplyContainerRunlabel() error {
+	return c.Reply(nil)
+}
+
+func (c *VarlinkCall) ReplyExecContainer() error {
 	return c.Reply(nil)
 }
 
@@ -6175,6 +6253,11 @@ func (s *VarlinkInterface) ContainerRunlabel(c VarlinkCall, runlabel_ Runlabel) 
 	return c.ReplyMethodNotImplemented("io.podman.ContainerRunlabel")
 }
 
+// ExecContainer executes a command in the given container.
+func (s *VarlinkInterface) ExecContainer(c VarlinkCall, opts_ ExecOpts) error {
+	return c.ReplyMethodNotImplemented("io.podman.ExecContainer")
+}
+
 // ListContainerMounts gathers all the mounted container mount points and returns them as an array
 // of strings
 // #### Example
@@ -6971,6 +7054,16 @@ func (s *VarlinkInterface) VarlinkDispatch(call varlink.Call, methodname string)
 		}
 		return s.iopodmanInterface.ContainerRunlabel(VarlinkCall{call}, in.Runlabel)
 
+	case "ExecContainer":
+		var in struct {
+			Opts ExecOpts `json:"opts"`
+		}
+		err := call.GetParameters(&in)
+		if err != nil {
+			return call.ReplyInvalidParameter("parameters")
+		}
+		return s.iopodmanInterface.ExecContainer(VarlinkCall{call}, in.Opts)
+
 	case "ListContainerMounts":
 		return s.iopodmanInterface.ListContainerMounts(VarlinkCall{call})
 
@@ -7241,9 +7334,7 @@ func (s *VarlinkInterface) VarlinkGetName() string {
 // Generated varlink interface description
 
 func (s *VarlinkInterface) VarlinkGetDescription() string {
-	return `# this is https://raw.githubusercontent.com/containers/libpod/v1.4.3/cmd/podman/varlink/io.podman.varlink
-#
-# Podman Service Interface and API description.  The master version of this document can be found
+	return `# Podman Service Interface and API description.  The master version of this document can be found
 # in the [API.md](https://github.com/containers/libpod/blob/master/API.md) file in the upstream libpod repository.
 interface io.podman
 
@@ -7314,7 +7405,8 @@ type Image (
   containers: int,
   labels: [string]string,
   isParent: bool,
-  topLayer: string
+  topLayer: string,
+  readOnly: bool
 )
 
 # ImageHistory describes the returned structure from ImageHistory.
@@ -7389,10 +7481,11 @@ type PsOpts (
     last: ?int,
     latest: ?bool,
     noTrunc: ?bool,
-	pod: ?bool,
-	quiet: ?bool,
-	sort: ?string,
-	sync: ?bool
+    pod: ?bool,
+    quiet: ?bool,
+    size: ?bool,
+    sort: ?string,
+    sync: ?bool
 )
 
 type PsContainer (
@@ -7471,7 +7564,8 @@ type InfoHost (
     hostname: string,
     kernel: string,
     os: string,
-    uptime: string
+    uptime: string,
+    eventlogger: string
 )
 
 # InfoGraphStatus describes the detailed status of the storage driver
@@ -7741,6 +7835,25 @@ type DiffInfo(
     path: string,
     # Add, Delete, Modify
     changeType: string
+)
+
+type ExecOpts(
+    # container name or id
+    name: string,
+    # Create pseudo tty
+    tty: bool,
+    # privileged access in container
+    privileged: bool,
+    # command to execute in container
+    cmd: []string,
+    # user to use in container
+    user: ?string,
+    # workdir to run command in container
+    workdir: ?string,
+    # slice of keyword=value environment variables
+    env: ?[]string,
+    # string of detach keys
+    detachKeys: ?string
 )
 
 # GetVersion returns version and build information of the podman service
@@ -8343,6 +8456,9 @@ method ContainerRestore(name: string, keep: bool, tcpEstablished: bool) -> (id: 
 # ContainerRunlabel runs executes a command as described by a given container image label.
 method ContainerRunlabel(runlabel: Runlabel) -> ()
 
+# ExecContainer executes a command in the given container.
+method ExecContainer(opts: ExecOpts) -> ()
+
 # ListContainerMounts gathers all the mounted container mount points and returns them as an array
 # of strings
 # #### Example
@@ -8497,6 +8613,9 @@ error WantsMoreRequired (reason: string)
 
 # Container is already stopped
 error ErrCtrStopped (id: string)
+
+# This function requires CGroupsV2 to run in rootless mode.
+error ErrRequiresCgroupsV2ForRootless(reason: string)
 `
 }
 
