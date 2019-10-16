@@ -1,4 +1,4 @@
-package utils
+package podman
 
 import (
 	"bytes"
@@ -6,8 +6,15 @@ import (
 	"io"
 
 	"github.com/fromanirh/pack8s/iopodman"
+
 	"github.com/varlink/go/varlink"
 )
+
+var NotImplemented error = fmt.Errorf("Not yet implemented")
+
+func NewConnection() (*varlink.Connection, error) {
+	return varlink.NewConnection("unix:/run/io.projectatomic.podman")
+}
 
 func SprintError(methodname string, err error) string {
 	buf := new(bytes.Buffer)
@@ -70,4 +77,21 @@ func SprintError(methodname string, err error) string {
 		}
 	}
 	return buf.String()
+}
+
+func Exec(conn *varlink.Connection, container string, args []string, out io.Writer) error {
+	return iopodman.ExecContainer().Call(conn, iopodman.ExecOpts{
+		Name:       container,
+		Tty:        true,
+		Privileged: true,
+		Cmd:        args,
+	})
+}
+
+func GetPrefixedContainers(conn *varlink.Connection, prefix string) ([]string, error) {
+	return nil, fmt.Errorf("not yet implemented")
+}
+
+func GetPrefixedVolumes(conn *varlink.Connection, prefix string) ([]string, error) {
+	return nil, fmt.Errorf("not yet implemented")
 }

@@ -7,18 +7,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	if os.Getenv("DOCKER_API_VERSION") == "" {
-		os.Setenv("DOCKER_API_VERSION", "1.24")
-	}
-}
-
 // NewRootCommand returns entrypoint command to interact with all other commands
 func NewRootCommand() *cobra.Command {
 
 	root := &cobra.Command{
-		Use:   "cli",
-		Short: "cli helps you creating ephemeral kubernetes and openshift clusters for testing",
+		Use:   "pack8s",
+		Short: "pack8s helps you creating ephemeral kubernetes and openshift clusters for testing",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Fprint(cmd.OutOrStderr(), cmd.UsageString())
 		},
@@ -26,15 +20,11 @@ func NewRootCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	root.PersistentFlags().StringP("prefix", "p", "kubevirt", "Prefix to identify docker containers")
+	root.PersistentFlags().StringP("prefix", "p", "kubevirt", "Prefix to identify containers")
 
 	root.AddCommand(
-		NewPortCommand(),
-		NewProvisionCommand(),
 		NewRemoveCommand(),
 		NewRunCommand(),
-		NewSSHCommand(),
-		NewSCPCommand(),
 	)
 
 	return root

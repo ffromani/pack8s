@@ -1,7 +1,7 @@
 all: build
 
 build:
-	cd cmd && go build -v .
+	go build -v .
 
 deps:
 	dep ensure
