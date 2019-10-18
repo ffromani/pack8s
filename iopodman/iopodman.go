@@ -17,7 +17,6 @@ type Volume struct {
 	MountPoint string            `json:"mountPoint"`
 	Driver     string            `json:"driver"`
 	Options    map[string]string `json:"options"`
-	Scope      string            `json:"scope"`
 }
 
 type NotImplemented struct {
@@ -259,7 +258,7 @@ type InfoStore struct {
 	Run_root             string          `json:"run_root"`
 }
 
-// InfoPodman provides details on the podman binary
+// InfoPodman provides details on the Podman binary
 type InfoPodmanBinary struct {
 	Compiler       string `json:"compiler"`
 	Go_version     string `json:"go_version"`
@@ -284,6 +283,8 @@ type Sockets struct {
 }
 
 // Create is an input structure for creating containers.
+// args[0] is the image name or id
+// args[1-] are the new commands if changed
 type Create struct {
 	Args                   []string  `json:"args"`
 	AddHost                *[]string `json:"addHost,omitempty"`
@@ -356,6 +357,7 @@ type Create struct {
 	Privileged             *bool     `json:"privileged,omitempty"`
 	Publish                *[]string `json:"publish,omitempty"`
 	PublishAll             *bool     `json:"publishAll,omitempty"`
+	Pull                   *string   `json:"pull,omitempty"`
 	Quiet                  *bool     `json:"quiet,omitempty"`
 	Readonly               *bool     `json:"readonly,omitempty"`
 	Readonlytmpfs          *bool     `json:"readonlytmpfs,omitempty"`
@@ -370,7 +372,7 @@ type Create struct {
 	Subuidname             *string   `json:"subuidname,omitempty"`
 	Subgidname             *string   `json:"subgidname,omitempty"`
 	Sysctl                 *[]string `json:"sysctl,omitempty"`
-	Systemd                *bool     `json:"systemd,omitempty"`
+	Systemd                *string   `json:"systemd,omitempty"`
 	Tmpfs                  *[]string `json:"tmpfs,omitempty"`
 	Tty                    *bool     `json:"tty,omitempty"`
 	Uidmap                 *[]string `json:"uidmap,omitempty"`
@@ -1006,6 +1008,44 @@ func (m Top_methods) Send(c *varlink.Connection, flags uint64, nameOrID_in_ stri
 			return
 		}
 		top_out_ = []string(out.Top)
+		return
+	}, nil
+}
+
+// HealthCheckRun executes defined container's healthcheck command
+// and returns the container's health status.
+type HealthCheckRun_methods struct{}
+
+func HealthCheckRun() HealthCheckRun_methods { return HealthCheckRun_methods{} }
+
+func (m HealthCheckRun_methods) Call(c *varlink.Connection, nameOrID_in_ string) (healthCheckStatus_out_ string, err_ error) {
+	receive, err_ := m.Send(c, 0, nameOrID_in_)
+	if err_ != nil {
+		return
+	}
+	healthCheckStatus_out_, _, err_ = receive()
+	return
+}
+
+func (m HealthCheckRun_methods) Send(c *varlink.Connection, flags uint64, nameOrID_in_ string) (func() (string, uint64, error), error) {
+	var in struct {
+		NameOrID string `json:"nameOrID"`
+	}
+	in.NameOrID = nameOrID_in_
+	receive, err := c.Send("io.podman.HealthCheckRun", in, flags)
+	if err != nil {
+		return nil, err
+	}
+	return func() (healthCheckStatus_out_ string, flags uint64, err error) {
+		var out struct {
+			HealthCheckStatus string `json:"healthCheckStatus"`
+		}
+		flags, err = receive(&out)
+		if err != nil {
+			err = Dispatch_Error(err)
+			return
+		}
+		healthCheckStatus_out_ = out.HealthCheckStatus
 		return
 	}, nil
 }
@@ -1950,10 +1990,12 @@ func (m WaitContainer_methods) Send(c *varlink.Connection, flags uint64, name_in
 	}, nil
 }
 
-// RemoveContainer requires the name or ID of container as well a boolean representing whether a running container can be stopped and removed, and a boolean
+// RemoveContainer requires the name or ID of a container as well as a boolean that
+// indicates whether a container should be forcefully removed (e.g., by stopping it), and a boolean
 // indicating whether to remove builtin volumes. Upon successful removal of the
 // container, its ID is returned.  If the
 // container cannot be found by name or ID, a [ContainerNotFound](#ContainerNotFound) error will be returned.
+// See also [EvictContainer](EvictContainer).
 // #### Example
 // ~~~
 // $ varlink call -m unix:/run/podman/io.podman/io.podman.RemoveContainer '{"name": "62f4fd98cb57"}'
@@ -1984,6 +2026,56 @@ func (m RemoveContainer_methods) Send(c *varlink.Connection, flags uint64, name_
 	in.Force = force_in_
 	in.RemoveVolumes = removeVolumes_in_
 	receive, err := c.Send("io.podman.RemoveContainer", in, flags)
+	if err != nil {
+		return nil, err
+	}
+	return func() (container_out_ string, flags uint64, err error) {
+		var out struct {
+			Container string `json:"container"`
+		}
+		flags, err = receive(&out)
+		if err != nil {
+			err = Dispatch_Error(err)
+			return
+		}
+		container_out_ = out.Container
+		return
+	}, nil
+}
+
+// EvictContainer requires the name or ID of a container as well as a boolean that
+// indicates to remove builtin volumes. Upon successful eviction of the container,
+// its ID is returned.  If the container cannot be found by name or ID,
+// a [ContainerNotFound](#ContainerNotFound) error will be returned.
+// See also [RemoveContainer](RemoveContainer).
+// #### Example
+// ~~~
+// $ varlink call -m unix:/run/podman/io.podman/io.podman.EvictContainer '{"name": "62f4fd98cb57"}'
+// {
+//   "container": "62f4fd98cb57f529831e8f90610e54bba74bd6f02920ffb485e15376ed365c20"
+// }
+// ~~~
+type EvictContainer_methods struct{}
+
+func EvictContainer() EvictContainer_methods { return EvictContainer_methods{} }
+
+func (m EvictContainer_methods) Call(c *varlink.Connection, name_in_ string, removeVolumes_in_ bool) (container_out_ string, err_ error) {
+	receive, err_ := m.Send(c, 0, name_in_, removeVolumes_in_)
+	if err_ != nil {
+		return
+	}
+	container_out_, _, err_ = receive()
+	return
+}
+
+func (m EvictContainer_methods) Send(c *varlink.Connection, flags uint64, name_in_ string, removeVolumes_in_ bool) (func() (string, uint64, error), error) {
+	var in struct {
+		Name          string `json:"name"`
+		RemoveVolumes bool   `json:"removeVolumes"`
+	}
+	in.Name = name_in_
+	in.RemoveVolumes = removeVolumes_in_
+	receive, err := c.Send("io.podman.EvictContainer", in, flags)
 	if err != nil {
 		return nil, err
 	}
@@ -2122,8 +2214,43 @@ func (m GetImage_methods) Send(c *varlink.Connection, flags uint64, id_in_ strin
 }
 
 // BuildImage takes a [BuildInfo](#BuildInfo) structure and builds an image.  At a minimum, you must provide the
-// 'dockerfile' and 'tags' options in the BuildInfo structure. It will return a [MoreResponse](#MoreResponse) structure
+// contextDir tarball path, the 'dockerfiles' path, and 'output' option in the BuildInfo structure.  The 'output'
+// options is the name of the of the resulting build. It will return a [MoreResponse](#MoreResponse) structure
 // that contains the build logs and resulting image ID.
+// #### Example
+// ~~~
+// $ sudo varlink call -m unix:///run/podman/io.podman/io.podman.BuildImage '{"build":{"contextDir":"/tmp/t/context.tar","dockerfiles":["Dockerfile"], "output":"foobar"}}'
+// {
+//  "image": {
+//    "id": "",
+//    "logs": [
+//      "STEP 1: FROM alpine\n"
+//    ]
+//  }
+// }
+// {
+//  "image": {
+//    "id": "",
+//    "logs": [
+//      "STEP 2: COMMIT foobar\n"
+//    ]
+//  }
+// }
+// {
+//  "image": {
+//    "id": "",
+//    "logs": [
+//      "b7b28af77ffec6054d13378df4fdf02725830086c7444d9c278af25312aa39b9\n"
+//    ]
+//  }
+// }
+// {
+//  "image": {
+//    "id": "b7b28af77ffec6054d13378df4fdf02725830086c7444d9c278af25312aa39b9",
+//    "logs": []
+//  }
+// }
+// ~~~
 type BuildImage_methods struct{}
 
 func BuildImage() BuildImage_methods { return BuildImage_methods{} }
@@ -4211,16 +4338,16 @@ type VolumeRemove_methods struct{}
 
 func VolumeRemove() VolumeRemove_methods { return VolumeRemove_methods{} }
 
-func (m VolumeRemove_methods) Call(c *varlink.Connection, options_in_ VolumeRemoveOpts) (volumeNames_out_ []string, err_ error) {
+func (m VolumeRemove_methods) Call(c *varlink.Connection, options_in_ VolumeRemoveOpts) (successes_out_ []string, failures_out_ map[string]string, err_ error) {
 	receive, err_ := m.Send(c, 0, options_in_)
 	if err_ != nil {
 		return
 	}
-	volumeNames_out_, _, err_ = receive()
+	successes_out_, failures_out_, _, err_ = receive()
 	return
 }
 
-func (m VolumeRemove_methods) Send(c *varlink.Connection, flags uint64, options_in_ VolumeRemoveOpts) (func() ([]string, uint64, error), error) {
+func (m VolumeRemove_methods) Send(c *varlink.Connection, flags uint64, options_in_ VolumeRemoveOpts) (func() ([]string, map[string]string, uint64, error), error) {
 	var in struct {
 		Options VolumeRemoveOpts `json:"options"`
 	}
@@ -4229,16 +4356,18 @@ func (m VolumeRemove_methods) Send(c *varlink.Connection, flags uint64, options_
 	if err != nil {
 		return nil, err
 	}
-	return func() (volumeNames_out_ []string, flags uint64, err error) {
+	return func() (successes_out_ []string, failures_out_ map[string]string, flags uint64, err error) {
 		var out struct {
-			VolumeNames []string `json:"volumeNames"`
+			Successes []string          `json:"successes"`
+			Failures  map[string]string `json:"failures"`
 		}
 		flags, err = receive(&out)
 		if err != nil {
 			err = Dispatch_Error(err)
 			return
 		}
-		volumeNames_out_ = []string(out.VolumeNames)
+		successes_out_ = []string(out.Successes)
+		failures_out_ = map[string]string(out.Failures)
 		return
 	}, nil
 }
@@ -4590,48 +4719,6 @@ func (m BuildImageHierarchyMap_methods) Send(c *varlink.Connection, flags uint64
 	}, nil
 }
 
-type GenerateSystemd_methods struct{}
-
-func GenerateSystemd() GenerateSystemd_methods { return GenerateSystemd_methods{} }
-
-func (m GenerateSystemd_methods) Call(c *varlink.Connection, name_in_ string, restart_in_ string, timeout_in_ int64, useName_in_ bool) (unit_out_ string, err_ error) {
-	receive, err_ := m.Send(c, 0, name_in_, restart_in_, timeout_in_, useName_in_)
-	if err_ != nil {
-		return
-	}
-	unit_out_, _, err_ = receive()
-	return
-}
-
-func (m GenerateSystemd_methods) Send(c *varlink.Connection, flags uint64, name_in_ string, restart_in_ string, timeout_in_ int64, useName_in_ bool) (func() (string, uint64, error), error) {
-	var in struct {
-		Name    string `json:"name"`
-		Restart string `json:"restart"`
-		Timeout int64  `json:"timeout"`
-		UseName bool   `json:"useName"`
-	}
-	in.Name = name_in_
-	in.Restart = restart_in_
-	in.Timeout = timeout_in_
-	in.UseName = useName_in_
-	receive, err := c.Send("io.podman.GenerateSystemd", in, flags)
-	if err != nil {
-		return nil, err
-	}
-	return func() (unit_out_ string, flags uint64, err error) {
-		var out struct {
-			Unit string `json:"unit"`
-		}
-		flags, err = receive(&out)
-		if err != nil {
-			err = Dispatch_Error(err)
-			return
-		}
-		unit_out_ = out.Unit
-		return
-	}, nil
-}
-
 // Generated service interface with all methods
 
 type iopodmanInterface interface {
@@ -4641,6 +4728,7 @@ type iopodmanInterface interface {
 	Ps(c VarlinkCall, opts_ PsOpts) error
 	GetContainersByStatus(c VarlinkCall, status_ []string) error
 	Top(c VarlinkCall, nameOrID_ string, descriptors_ []string) error
+	HealthCheckRun(c VarlinkCall, nameOrID_ string) error
 	GetContainer(c VarlinkCall, id_ string) error
 	GetContainersByContext(c VarlinkCall, all_ bool, latest_ bool, args_ []string) error
 	CreateContainer(c VarlinkCall, create_ Create) error
@@ -4664,6 +4752,7 @@ type iopodmanInterface interface {
 	GetAttachSockets(c VarlinkCall, name_ string) error
 	WaitContainer(c VarlinkCall, name_ string, interval_ int64) error
 	RemoveContainer(c VarlinkCall, name_ string, force_ bool, removeVolumes_ bool) error
+	EvictContainer(c VarlinkCall, name_ string, removeVolumes_ bool) error
 	DeleteStoppedContainers(c VarlinkCall) error
 	ListImages(c VarlinkCall) error
 	GetImage(c VarlinkCall, id_ string) error
@@ -4724,7 +4813,6 @@ type iopodmanInterface interface {
 	Diff(c VarlinkCall, name_ string) error
 	GetLayersMapWithImageInfo(c VarlinkCall) error
 	BuildImageHierarchyMap(c VarlinkCall, name_ string) error
-	GenerateSystemd(c VarlinkCall, name_ string, restart_ string, timeout_ int64, useName_ bool) error
 }
 
 // Generated service object with all methods
@@ -4889,6 +4977,14 @@ func (c *VarlinkCall) ReplyTop(top_ []string) error {
 		Top []string `json:"top"`
 	}
 	out.Top = []string(top_)
+	return c.Reply(&out)
+}
+
+func (c *VarlinkCall) ReplyHealthCheckRun(healthCheckStatus_ string) error {
+	var out struct {
+		HealthCheckStatus string `json:"healthCheckStatus"`
+	}
+	out.HealthCheckStatus = healthCheckStatus_
 	return c.Reply(&out)
 }
 
@@ -5061,6 +5157,14 @@ func (c *VarlinkCall) ReplyWaitContainer(exitcode_ int64) error {
 }
 
 func (c *VarlinkCall) ReplyRemoveContainer(container_ string) error {
+	var out struct {
+		Container string `json:"container"`
+	}
+	out.Container = container_
+	return c.Reply(&out)
+}
+
+func (c *VarlinkCall) ReplyEvictContainer(container_ string) error {
 	var out struct {
 		Container string `json:"container"`
 	}
@@ -5458,11 +5562,13 @@ func (c *VarlinkCall) ReplyVolumeCreate(volumeName_ string) error {
 	return c.Reply(&out)
 }
 
-func (c *VarlinkCall) ReplyVolumeRemove(volumeNames_ []string) error {
+func (c *VarlinkCall) ReplyVolumeRemove(successes_ []string, failures_ map[string]string) error {
 	var out struct {
-		VolumeNames []string `json:"volumeNames"`
+		Successes []string          `json:"successes"`
+		Failures  map[string]string `json:"failures"`
 	}
-	out.VolumeNames = []string(volumeNames_)
+	out.Successes = []string(successes_)
+	out.Failures = map[string]string(failures_)
 	return c.Reply(&out)
 }
 
@@ -5540,14 +5646,6 @@ func (c *VarlinkCall) ReplyBuildImageHierarchyMap(imageInfo_ string) error {
 	return c.Reply(&out)
 }
 
-func (c *VarlinkCall) ReplyGenerateSystemd(unit_ string) error {
-	var out struct {
-		Unit string `json:"unit"`
-	}
-	out.Unit = unit_
-	return c.Reply(&out)
-}
-
 // Generated dummy implementations for all varlink methods
 
 // GetVersion returns version and build information of the podman service
@@ -5577,6 +5675,12 @@ func (s *VarlinkInterface) GetContainersByStatus(c VarlinkCall, status_ []string
 
 func (s *VarlinkInterface) Top(c VarlinkCall, nameOrID_ string, descriptors_ []string) error {
 	return c.ReplyMethodNotImplemented("io.podman.Top")
+}
+
+// HealthCheckRun executes defined container's healthcheck command
+// and returns the container's health status.
+func (s *VarlinkInterface) HealthCheckRun(c VarlinkCall, nameOrID_ string) error {
+	return c.ReplyMethodNotImplemented("io.podman.HealthCheckRun")
 }
 
 // GetContainer returns information about a single container.  If a container
@@ -5791,10 +5895,12 @@ func (s *VarlinkInterface) WaitContainer(c VarlinkCall, name_ string, interval_ 
 	return c.ReplyMethodNotImplemented("io.podman.WaitContainer")
 }
 
-// RemoveContainer requires the name or ID of container as well a boolean representing whether a running container can be stopped and removed, and a boolean
+// RemoveContainer requires the name or ID of a container as well as a boolean that
+// indicates whether a container should be forcefully removed (e.g., by stopping it), and a boolean
 // indicating whether to remove builtin volumes. Upon successful removal of the
 // container, its ID is returned.  If the
 // container cannot be found by name or ID, a [ContainerNotFound](#ContainerNotFound) error will be returned.
+// See also [EvictContainer](EvictContainer).
 // #### Example
 // ~~~
 // $ varlink call -m unix:/run/podman/io.podman/io.podman.RemoveContainer '{"name": "62f4fd98cb57"}'
@@ -5804,6 +5910,22 @@ func (s *VarlinkInterface) WaitContainer(c VarlinkCall, name_ string, interval_ 
 // ~~~
 func (s *VarlinkInterface) RemoveContainer(c VarlinkCall, name_ string, force_ bool, removeVolumes_ bool) error {
 	return c.ReplyMethodNotImplemented("io.podman.RemoveContainer")
+}
+
+// EvictContainer requires the name or ID of a container as well as a boolean that
+// indicates to remove builtin volumes. Upon successful eviction of the container,
+// its ID is returned.  If the container cannot be found by name or ID,
+// a [ContainerNotFound](#ContainerNotFound) error will be returned.
+// See also [RemoveContainer](RemoveContainer).
+// #### Example
+// ~~~
+// $ varlink call -m unix:/run/podman/io.podman/io.podman.EvictContainer '{"name": "62f4fd98cb57"}'
+// {
+//   "container": "62f4fd98cb57f529831e8f90610e54bba74bd6f02920ffb485e15376ed365c20"
+// }
+// ~~~
+func (s *VarlinkInterface) EvictContainer(c VarlinkCall, name_ string, removeVolumes_ bool) error {
+	return c.ReplyMethodNotImplemented("io.podman.EvictContainer")
 }
 
 // DeleteStoppedContainers will delete all containers that are not running. It will return a list the deleted
@@ -5837,8 +5959,43 @@ func (s *VarlinkInterface) GetImage(c VarlinkCall, id_ string) error {
 }
 
 // BuildImage takes a [BuildInfo](#BuildInfo) structure and builds an image.  At a minimum, you must provide the
-// 'dockerfile' and 'tags' options in the BuildInfo structure. It will return a [MoreResponse](#MoreResponse) structure
+// contextDir tarball path, the 'dockerfiles' path, and 'output' option in the BuildInfo structure.  The 'output'
+// options is the name of the of the resulting build. It will return a [MoreResponse](#MoreResponse) structure
 // that contains the build logs and resulting image ID.
+// #### Example
+// ~~~
+// $ sudo varlink call -m unix:///run/podman/io.podman/io.podman.BuildImage '{"build":{"contextDir":"/tmp/t/context.tar","dockerfiles":["Dockerfile"], "output":"foobar"}}'
+// {
+//  "image": {
+//    "id": "",
+//    "logs": [
+//      "STEP 1: FROM alpine\n"
+//    ]
+//  }
+// }
+// {
+//  "image": {
+//    "id": "",
+//    "logs": [
+//      "STEP 2: COMMIT foobar\n"
+//    ]
+//  }
+// }
+// {
+//  "image": {
+//    "id": "",
+//    "logs": [
+//      "b7b28af77ffec6054d13378df4fdf02725830086c7444d9c278af25312aa39b9\n"
+//    ]
+//  }
+// }
+// {
+//  "image": {
+//    "id": "b7b28af77ffec6054d13378df4fdf02725830086c7444d9c278af25312aa39b9",
+//    "logs": []
+//  }
+// }
+// ~~~
 func (s *VarlinkInterface) BuildImage(c VarlinkCall, build_ BuildInfo) error {
 	return c.ReplyMethodNotImplemented("io.podman.BuildImage")
 }
@@ -6415,10 +6572,6 @@ func (s *VarlinkInterface) BuildImageHierarchyMap(c VarlinkCall, name_ string) e
 	return c.ReplyMethodNotImplemented("io.podman.BuildImageHierarchyMap")
 }
 
-func (s *VarlinkInterface) GenerateSystemd(c VarlinkCall, name_ string, restart_ string, timeout_ int64, useName_ bool) error {
-	return c.ReplyMethodNotImplemented("io.podman.GenerateSystemd")
-}
-
 // Generated method call dispatcher
 
 func (s *VarlinkInterface) VarlinkDispatch(call varlink.Call, methodname string) error {
@@ -6462,6 +6615,16 @@ func (s *VarlinkInterface) VarlinkDispatch(call varlink.Call, methodname string)
 			return call.ReplyInvalidParameter("parameters")
 		}
 		return s.iopodmanInterface.Top(VarlinkCall{call}, in.NameOrID, []string(in.Descriptors))
+
+	case "HealthCheckRun":
+		var in struct {
+			NameOrID string `json:"nameOrID"`
+		}
+		err := call.GetParameters(&in)
+		if err != nil {
+			return call.ReplyInvalidParameter("parameters")
+		}
+		return s.iopodmanInterface.HealthCheckRun(VarlinkCall{call}, in.NameOrID)
 
 	case "GetContainer":
 		var in struct {
@@ -6709,6 +6872,17 @@ func (s *VarlinkInterface) VarlinkDispatch(call varlink.Call, methodname string)
 			return call.ReplyInvalidParameter("parameters")
 		}
 		return s.iopodmanInterface.RemoveContainer(VarlinkCall{call}, in.Name, in.Force, in.RemoveVolumes)
+
+	case "EvictContainer":
+		var in struct {
+			Name          string `json:"name"`
+			RemoveVolumes bool   `json:"removeVolumes"`
+		}
+		err := call.GetParameters(&in)
+		if err != nil {
+			return call.ReplyInvalidParameter("parameters")
+		}
+		return s.iopodmanInterface.EvictContainer(VarlinkCall{call}, in.Name, in.RemoveVolumes)
 
 	case "DeleteStoppedContainers":
 		return s.iopodmanInterface.DeleteStoppedContainers(VarlinkCall{call})
@@ -7307,19 +7481,6 @@ func (s *VarlinkInterface) VarlinkDispatch(call varlink.Call, methodname string)
 		}
 		return s.iopodmanInterface.BuildImageHierarchyMap(VarlinkCall{call}, in.Name)
 
-	case "GenerateSystemd":
-		var in struct {
-			Name    string `json:"name"`
-			Restart string `json:"restart"`
-			Timeout int64  `json:"timeout"`
-			UseName bool   `json:"useName"`
-		}
-		err := call.GetParameters(&in)
-		if err != nil {
-			return call.ReplyInvalidParameter("parameters")
-		}
-		return s.iopodmanInterface.GenerateSystemd(VarlinkCall{call}, in.Name, in.Restart, in.Timeout, in.UseName)
-
 	default:
 		return call.ReplyMethodNotFound(methodname)
 	}
@@ -7343,8 +7504,7 @@ type Volume (
   labels: [string]string,
   mountPoint: string,
   driver: string,
-  options: [string]string,
-  scope: string
+  options: [string]string
 )
 
 type NotImplemented (
@@ -7586,7 +7746,7 @@ type InfoStore (
     run_root: string
 )
 
-# InfoPodman provides details on the podman binary
+# InfoPodman provides details on the Podman binary
 type InfoPodmanBinary (
     compiler: string,
     go_version: string,
@@ -7611,6 +7771,8 @@ type Sockets(
 )
 
 # Create is an input structure for creating containers.
+# args[0] is the image name or id
+# args[1-] are the new commands if changed
 type Create (
     args: []string,
     addHost: ?[]string,
@@ -7683,6 +7845,7 @@ type Create (
     privileged: ?bool,
     publish: ?[]string,
     publishAll: ?bool,
+    pull: ?string,
     quiet: ?bool,
     readonly: ?bool,
     readonlytmpfs: ?bool,
@@ -7697,7 +7860,7 @@ type Create (
     subuidname: ?string,
     subgidname: ?string,
     sysctl: ?[]string,
-    systemd: ?bool,
+    systemd: ?string,
     tmpfs: ?[]string,
     tty: ?bool,
     uidmap: ?[]string,
@@ -7880,6 +8043,10 @@ method GetContainersByStatus(status: []string) -> (containerS: []Container)
 
 method Top (nameOrID: string, descriptors: []string) -> (top: []string)
 
+# HealthCheckRun executes defined container's healthcheck command
+# and returns the container's health status.
+method HealthCheckRun (nameOrID: string) -> (healthCheckStatus: string)
+
 # GetContainer returns information about a single container.  If a container
 # with the given id doesn't exist, a [ContainerNotFound](#ContainerNotFound)
 # error will be returned.  See also [ListContainers](ListContainers) and
@@ -8057,10 +8224,12 @@ method GetAttachSockets(name: string) -> (sockets: Sockets)
 # or name, a [ContainerNotFound](#ContainerNotFound) error is returned.
 method WaitContainer(name: string, interval: int) -> (exitcode: int)
 
-# RemoveContainer requires the name or ID of container as well a boolean representing whether a running container can be stopped and removed, and a boolean
+# RemoveContainer requires the name or ID of a container as well as a boolean that
+# indicates whether a container should be forcefully removed (e.g., by stopping it), and a boolean
 # indicating whether to remove builtin volumes. Upon successful removal of the
 # container, its ID is returned.  If the
 # container cannot be found by name or ID, a [ContainerNotFound](#ContainerNotFound) error will be returned.
+# See also [EvictContainer](EvictContainer).
 # #### Example
 # ~~~
 # $ varlink call -m unix:/run/podman/io.podman/io.podman.RemoveContainer '{"name": "62f4fd98cb57"}'
@@ -8069,6 +8238,20 @@ method WaitContainer(name: string, interval: int) -> (exitcode: int)
 # }
 # ~~~
 method RemoveContainer(name: string, force: bool, removeVolumes: bool) -> (container: string)
+
+# EvictContainer requires the name or ID of a container as well as a boolean that
+# indicates to remove builtin volumes. Upon successful eviction of the container,
+# its ID is returned.  If the container cannot be found by name or ID,
+# a [ContainerNotFound](#ContainerNotFound) error will be returned.
+# See also [RemoveContainer](RemoveContainer).
+# #### Example
+# ~~~
+# $ varlink call -m unix:/run/podman/io.podman/io.podman.EvictContainer '{"name": "62f4fd98cb57"}'
+# {
+#   "container": "62f4fd98cb57f529831e8f90610e54bba74bd6f02920ffb485e15376ed365c20"
+# }
+# ~~~
+method EvictContainer(name: string, removeVolumes: bool) -> (container: string)
 
 # DeleteStoppedContainers will delete all containers that are not running. It will return a list the deleted
 # container IDs.  See also [RemoveContainer](RemoveContainer).
@@ -8095,8 +8278,43 @@ method ListImages() -> (images: []Image)
 method GetImage(id: string) -> (image: Image)
 
 # BuildImage takes a [BuildInfo](#BuildInfo) structure and builds an image.  At a minimum, you must provide the
-# 'dockerfile' and 'tags' options in the BuildInfo structure. It will return a [MoreResponse](#MoreResponse) structure
+# contextDir tarball path, the 'dockerfiles' path, and 'output' option in the BuildInfo structure.  The 'output'
+# options is the name of the of the resulting build. It will return a [MoreResponse](#MoreResponse) structure
 # that contains the build logs and resulting image ID.
+# #### Example
+# ~~~
+# $ sudo varlink call -m unix:///run/podman/io.podman/io.podman.BuildImage '{"build":{"contextDir":"/tmp/t/context.tar","dockerfiles":["Dockerfile"], "output":"foobar"}}'
+# {
+#  "image": {
+#    "id": "",
+#    "logs": [
+#      "STEP 1: FROM alpine\n"
+#    ]
+#  }
+# }
+# {
+#  "image": {
+#    "id": "",
+#    "logs": [
+#      "STEP 2: COMMIT foobar\n"
+#    ]
+#  }
+# }
+# {
+#  "image": {
+#    "id": "",
+#    "logs": [
+#      "b7b28af77ffec6054d13378df4fdf02725830086c7444d9c278af25312aa39b9\n"
+#    ]
+#  }
+# }
+# {
+#  "image": {
+#    "id": "b7b28af77ffec6054d13378df4fdf02725830086c7444d9c278af25312aa39b9",
+#    "logs": []
+#  }
+# }
+# ~~~
 method BuildImage(build: BuildInfo) -> (image: MoreResponse)
 
 # This function is not implemented yet.
@@ -8542,7 +8760,7 @@ method ReceiveFile(path: string, delete: bool) -> (len: int)
 method VolumeCreate(options: VolumeCreateOpts) -> (volumeName: string)
 
 # VolumeRemove removes a volume on a remote host
-method VolumeRemove(options: VolumeRemoveOpts) -> (volumeNames: []string)
+method VolumeRemove(options: VolumeRemoveOpts) -> (successes: []string, failures: [string]string)
 
 # GetVolumes gets slice of the volumes on a remote host
 method GetVolumes(args: []string, all: bool) -> (volumes: []Volume)
@@ -8572,8 +8790,6 @@ method GetLayersMapWithImageInfo() -> (layerMap: string)
 
 # BuildImageHierarchyMap is for the development of Podman and should not be used.
 method BuildImageHierarchyMap(name: string) -> (imageInfo: string)
-
-method GenerateSystemd(name: string, restart: string, timeout: int, useName: bool) -> (unit: string)
 
 # ImageNotFound means the image could not be found by the provided name or ID in local storage.
 error ImageNotFound (id: string, reason: string)
