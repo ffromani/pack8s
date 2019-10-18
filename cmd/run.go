@@ -21,31 +21,57 @@ import (
 	"github.com/fromanirh/pack8s/internal/pkg/ports"
 )
 
+type options struct {
+	privileged     bool
+	nodes          uint
+	memory         string
+	cpu            uint
+	secondaryNics  uint
+	qemuArgs       string
+	background     bool
+	reverse        bool
+	randomPorts    bool
+	registryVolume string
+	vncPort        uint
+	registryPort   uint
+	ocpPort        uint
+	k8sPort        uint
+	sshPort        uint
+	nfsData        string
+	logDir         string
+	enableCeph     bool
+}
+
+var opts options
+
 // NewRunCommand returns command that runs given cluster
 func NewRunCommand() *cobra.Command {
+
 	run := &cobra.Command{
 		Use:   "run",
 		Short: "run a given cluster",
 		RunE:  run,
 		Args:  cobra.ExactArgs(1),
 	}
-	run.Flags().UintP("nodes", "n", 1, "number of cluster nodes to start")
-	run.Flags().StringP("memory", "m", "3096M", "amount of ram per node")
-	run.Flags().UintP("cpu", "c", 2, "number of cpu cores per node")
-	run.Flags().UintP("secondary-nics", "", 0, "number of secondary nics to add")
-	run.Flags().String("qemu-args", "", "additional qemu args to pass through to the nodes")
-	run.Flags().BoolP("background", "b", false, "go to background after nodes are up")
-	run.Flags().BoolP("reverse", "r", false, "revert node startup order")
-	run.Flags().Bool("random-ports", true, "expose all ports on random localhost ports")
-	run.Flags().String("registry-volume", "", "cache docker registry content in the specified volume")
-	run.Flags().Uint("vnc-port", 0, "port on localhost for vnc")
-	run.Flags().Uint("registry-port", 0, "port on localhost for the docker registry")
-	run.Flags().Uint("ocp-port", 0, "port on localhost for the ocp cluster")
-	run.Flags().Uint("k8s-port", 0, "port on localhost for the k8s cluster")
-	run.Flags().Uint("ssh-port", 0, "port on localhost for ssh server")
-	run.Flags().String("nfs-data", "", "path to data which should be exposed via nfs to the nodes")
-	run.Flags().String("log-to-dir", "", "enables aggregated cluster logging to the folder")
-	run.Flags().Bool("enable-ceph", false, "enables dynamic storage provisioning using Ceph")
+
+	opts.privileged = true // always
+	run.Flags().UintVarP(&opts.nodes, "nodes", "n", 1, "number of cluster nodes to start")
+	run.Flags().StringVarP(&opts.memory, "memory", "m", "3096M", "amount of ram per node")
+	run.Flags().UintVarP(&opts.cpu, "cpu", "c", 2, "number of cpu cores per node")
+	run.Flags().UintVarP(&opts.secondaryNics, "secondary-nics", "", 0, "number of secondary nics to add")
+	run.Flags().StringVar(&opts.qemuArgs, "qemu-args", "", "additional qemu args to pass through to the nodes")
+	run.Flags().BoolVarP(&opts.background, "background", "b", false, "go to background after nodes are up")
+	run.Flags().BoolVarP(&opts.reverse, "reverse", "r", false, "revert node startup order")
+	run.Flags().BoolVar(&opts.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
+	run.Flags().StringVar(&opts.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
+	run.Flags().UintVar(&opts.vncPort, "vnc-port", 0, "port on localhost for vnc")
+	run.Flags().UintVar(&opts.registryPort, "registry-port", 0, "port on localhost for the docker registry")
+	run.Flags().UintVar(&opts.ocpPort, "ocp-port", 0, "port on localhost for the ocp cluster")
+	run.Flags().UintVar(&opts.k8sPort, "k8s-port", 0, "port on localhost for the k8s cluster")
+	run.Flags().UintVar(&opts.sshPort, "ssh-port", 0, "port on localhost for ssh server")
+	run.Flags().StringVar(&opts.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
+	run.Flags().StringVar(&opts.logDir, "log-to-dir", "", "enables aggregated cluster logging to the folder")
+	run.Flags().BoolVar(&opts.enableCeph, "enable-ceph", false, "enables dynamic storage provisioning using Ceph")
 
 	//	run.AddCommand(
 	//		okd.NewRunCommand(),
@@ -57,24 +83,6 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	privileged := true
 
 	prefix, err := cmd.Flags().GetString("prefix")
-	if err != nil {
-		return err
-	}
-
-	nodes, err := cmd.Flags().GetUint("nodes")
-	if err != nil {
-		return err
-	}
-	memory, err := cmd.Flags().GetString("memory")
-	if err != nil {
-		return err
-	}
-
-	reverse, err := cmd.Flags().GetBool("reverse")
-	if err != nil {
-		return err
-	}
-	randomPorts, err := cmd.Flags().GetBool("random-ports")
 	if err != nil {
 		return err
 	}
@@ -105,46 +113,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	qemuArgs, err := cmd.Flags().GetString("qemu-args")
-	if err != nil {
-		return err
-	}
-
-	cpu, err := cmd.Flags().GetUint("cpu")
-	if err != nil {
-		return err
-	}
-
-	secondaryNics, err := cmd.Flags().GetUint("secondary-nics")
-	if err != nil {
-		return err
-	}
-	registryVol, err := cmd.Flags().GetString("registry-volume")
-	if err != nil {
-		return err
-	}
-
-	nfsData, err := cmd.Flags().GetString("nfs-data")
-	if err != nil {
-		return err
-	}
-
-	logDir, err := cmd.Flags().GetString("log-to-dir")
-	if err != nil {
-		return err
-	}
-
-	cephEnabled, err := cmd.Flags().GetBool("enable-ceph")
-	if err != nil {
-		return err
-	}
-
 	cluster := args[0]
-
-	background, err := cmd.Flags().GetBool("background")
-	if err != nil {
-		return err
-	}
 
 	conn, err := podman.NewConnection()
 	if err != nil {
@@ -183,14 +152,14 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		},
 		Args: []string{cluster, "/bin/bash", "-c", "/dnsmasq.sh"},
 		Env: &[]string{
-			fmt.Sprintf("NUM_NODES=%d", nodes),
-			fmt.Sprintf("NUM_SECONDARY_NICS=%d", secondaryNics),
+			fmt.Sprintf("NUM_NODES=%d", opts.nodes),
+			fmt.Sprintf("NUM_SECONDARY_NICS=%d", opts.secondaryNics),
 		},
 		Expose:     &dnsmasqExpose,
 		Name:       &dnsmasqName,
 		Privileged: &privileged,
 		Publish:    &dnsmasqPorts,
-		PublishAll: &randomPorts,
+		PublishAll: &opts.randomPorts,
 	})
 	if err != nil {
 		return err
@@ -204,9 +173,9 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	// Create registry volume
+	// TODO: how to use the user-supplied name?
 	var registryMounts mounts.MountMapping
-	if registryVol != "" {
+	if opts.registryVolume != "" {
 		registryMounts, err = mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
 			mounts.MountInfo{
 				Name: fmt.Sprintf("%s-registry", prefix),
@@ -232,8 +201,8 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	if nfsData != "" {
-		nfsData, err := filepath.Abs(nfsData)
+	if opts.nfsData != "" {
+		nfsData, err := filepath.Abs(opts.nfsData)
 		if err != nil {
 			return err
 		}
@@ -257,7 +226,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	if cephEnabled {
+	if opts.enableCeph {
 		err = images.PullImage(conn, images.CephImage, os.Stdout)
 		if err != nil {
 			return err
@@ -281,8 +250,8 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	if logDir != "" {
-		logDir, err := filepath.Abs(logDir)
+	if opts.logDir != "" {
+		logDir, err := filepath.Abs(opts.logDir)
 		if err != nil {
 			return err
 		}
@@ -316,13 +285,13 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(int(nodes))
+	wg.Add(int(opts.nodes))
 	macCounter := 0
 
-	for x := 0; x < int(nodes); x++ {
-		nodeQemuArgs := qemuArgs
+	for x := 0; x < int(opts.nodes); x++ {
+		nodeQemuArgs := opts.qemuArgs
 
-		for i := 0; i < int(secondaryNics); i++ {
+		for i := 0; i < int(opts.secondaryNics); i++ {
 			netSuffix := fmt.Sprintf("%d-%d", x, i)
 			macSuffix := fmt.Sprintf("%02x", macCounter)
 			macCounter++
@@ -335,9 +304,9 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 		nodeName := nodeNameFromIndex(x + 1)
 		nodeNum := fmt.Sprintf("%02d", x+1)
-		if reverse {
-			nodeName = nodeNameFromIndex((int(nodes) - x))
-			nodeNum = fmt.Sprintf("%02d", (int(nodes) - x))
+		if opts.reverse {
+			nodeName = nodeNameFromIndex((int(opts.nodes) - x))
+			nodeNum = fmt.Sprintf("%02d", (int(opts.nodes) - x))
 		}
 
 		nodeMounts, err := mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
@@ -354,7 +323,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		contNodeName := nodeContainer(prefix, nodeName)
 		contNodeMountsStrings := nodeMounts.ToStrings()
 		contNodeID, err := ldgr.RunContainer(iopodman.Create{
-			Args: []string{cluster, "/bin/bash", "-c", fmt.Sprintf("/vm.sh -n /var/run/disk/disk.qcow2 --memory %s --cpu %s %s", memory, strconv.Itoa(int(cpu)), nodeQemuArgs)},
+			Args: []string{cluster, "/bin/bash", "-c", fmt.Sprintf("/vm.sh -n /var/run/disk/disk.qcow2 --memory %s --cpu %s %s", opts.memory, strconv.Itoa(int(opts.cpu)), nodeQemuArgs)},
 			Env: &[]string{
 				fmt.Sprintf("NODE_NUM=%s", nodeNum),
 			},
@@ -390,7 +359,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}(contNodeID)
 	}
 
-	if cephEnabled {
+	if opts.enableCeph {
 		// XXX begin
 		keyRing := new(bytes.Buffer)
 		err := podman.Exec(conn, nodeContainer(prefix, "ceph"), []string{
@@ -423,7 +392,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// If logging is enabled, deploy the default fluent logging
-	if logDir != "" {
+	if opts.logDir != "" {
 		nodeName := nodeNameFromIndex(1)
 		err := podman.Exec(conn, nodeContainer(prefix, nodeName), []string{
 			"/bin/bash",
@@ -436,7 +405,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// If background flag was specified, we don't want to clean up if we reach that state
-	if !background {
+	if !opts.background {
 		wg.Wait()
 		ldgr.Done <- fmt.Errorf("Done. please clean up")
 	}
