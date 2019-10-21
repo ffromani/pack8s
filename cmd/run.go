@@ -19,6 +19,8 @@ import (
 	"github.com/fromanirh/pack8s/internal/pkg/mounts"
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/internal/pkg/ports"
+
+	"github.com/fromanirh/pack8s/cmd/okd"
 )
 
 type options struct {
@@ -73,15 +75,13 @@ func NewRunCommand() *cobra.Command {
 	run.Flags().StringVar(&opts.logDir, "log-to-dir", "", "enables aggregated cluster logging to the folder")
 	run.Flags().BoolVar(&opts.enableCeph, "enable-ceph", false, "enables dynamic storage provisioning using Ceph")
 
-	//	run.AddCommand(
-	//		okd.NewRunCommand(),
-	//	)
+	run.AddCommand(
+		okd.NewRunCommand(),
+	)
 	return run
 }
 
 func run(cmd *cobra.Command, args []string) (err error) {
-	privileged := true
-
 	prefix, err := cmd.Flags().GetString("prefix")
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		},
 		Expose:     &dnsmasqExpose,
 		Name:       &dnsmasqName,
-		Privileged: &privileged,
+		Privileged: &opts.privileged,
 		Publish:    &dnsmasqPorts,
 		PublishAll: &opts.randomPorts,
 	})
@@ -194,7 +194,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		Args:       []string{images.DockerRegistryImage},
 		Name:       &registryName,
 		Mount:      &registryMountsStrings,
-		Privileged: &privileged,
+		Privileged: &opts.privileged,
 		Network:    &dnsmasqNetwork,
 	})
 	if err != nil {
@@ -218,7 +218,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Args:       []string{images.NFSGaneshaImage},
 			Name:       &nfsName,
 			Mount:      &nfsMounts,
-			Privileged: &privileged,
+			Privileged: &opts.privileged,
 			Network:    &dnsmasqNetwork,
 		})
 		if err != nil {
@@ -242,7 +242,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 				"DEMO_DAEMONS=osd,mds",
 				"CEPH_DEMO_UID=demo",
 			},
-			Privileged: &privileged,
+			Privileged: &opts.privileged,
 			Network:    &dnsmasqNetwork,
 		})
 		if err != nil {
@@ -276,7 +276,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			},
 			Name:       &fluentdName,
 			Mount:      &fluentdMounts,
-			Privileged: &privileged,
+			Privileged: &opts.privileged,
 			Network:    &dnsmasqNetwork,
 		})
 		if err != nil {
@@ -329,7 +329,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			},
 			Name:       &contNodeName,
 			Mount:      &contNodeMountsStrings,
-			Privileged: &privileged,
+			Privileged: &opts.privileged,
 			Network:    &dnsmasqNetwork,
 		})
 		if err != nil {

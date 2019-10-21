@@ -14,4 +14,7 @@ generate:
 	dep ensure
 	go generate ./...
 
+clean:
+	rm -f pack8s
+
 prep: deps generate fmt
