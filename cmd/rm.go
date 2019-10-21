@@ -45,20 +45,19 @@ func remove(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	/*volumes*/
-	_, err = podman.GetPrefixedVolumes(conn, prefix)
-	if err != nil {
-		return err
-	}
-
-	// TODO
+	// TODO: needed?
 	/*
-		for _, v := range volumes {
-			err := cli.VolumeRemove(context.Background(), v.Name, true)
-			if err != nil {
-				return err
-			}
+		_, err = podman.GetPrefixedVolumes(conn, prefix)
+		if err != nil {
+			return err
 		}
+
+			for _, v := range volumes {
+				err := cli.VolumeRemove(context.Background(), v.Name, true)
+				if err != nil {
+					return err
+				}
+			}
 	*/
 	return nil
 }

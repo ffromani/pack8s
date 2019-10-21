@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/fromanirh/pack8s/iopodman"
 
@@ -89,9 +90,22 @@ func Exec(conn *varlink.Connection, container string, args []string, out io.Writ
 }
 
 func GetPrefixedContainers(conn *varlink.Connection, prefix string) ([]string, error) {
-	return nil, fmt.Errorf("not yet implemented")
+	names := []string{}
+	containers, err := iopodman.ListContainers().Call(conn)
+	if err != nil {
+		return names, err
+	}
+
+	for _, cont := range containers {
+		// TODO: why is it Name*s*? there is a bug lurking here? docs are unclear.
+		if strings.HasPrefix(cont.Names, prefix) {
+			names = append(names, cont.Names)
+		}
+	}
+	return names, nil
 }
 
 func GetPrefixedVolumes(conn *varlink.Connection, prefix string) ([]string, error) {
+	// TODO: how to implement this?
 	return nil, fmt.Errorf("not yet implemented")
 }
