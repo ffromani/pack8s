@@ -39,7 +39,7 @@ func remove(cmd *cobra.Command, _ []string) error {
 	removeVolumes := true
 
 	for _, cont := range containers {
-		_, err := iopodman.RemoveContainer().Call(conn, cont, force, removeVolumes)
+		_, err := iopodman.RemoveContainer().Call(conn, cont.Id, force, removeVolumes)
 		if err != nil {
 			return err
 		}

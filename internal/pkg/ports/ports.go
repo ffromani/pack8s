@@ -96,3 +96,22 @@ func (pm PortMapping) appendPort(exposedPort int, flagSet *pflag.FlagSet, flagNa
 	}
 	return nil
 }
+
+func GetPublicPort(port int, containerPorts []iopodman.ContainerPortMappings) (int, error) {
+	portStr := fmt.Sprintf("%d", port)
+	for _, p := range containerPorts {
+		if p.Container_port == portStr {
+			return strconv.Atoi(p.Host_port)
+		}
+	}
+	return 0, fmt.Errorf("port is not exposed")
+}
+
+func PrintPublicPort(port int, containerPorts []iopodman.ContainerPortMappings) error {
+	p, err := GetPublicPort(port, containerPorts)
+	if err != nil {
+		return err
+	}
+	fmt.Println(p)
+	return nil
+}

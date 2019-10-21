@@ -89,20 +89,20 @@ func Exec(conn *varlink.Connection, container string, args []string, out io.Writ
 	})
 }
 
-func GetPrefixedContainers(conn *varlink.Connection, prefix string) ([]string, error) {
-	names := []string{}
+func GetPrefixedContainers(conn *varlink.Connection, prefix string) ([]iopodman.Container, error) {
+	ret := []iopodman.Container{}
 	containers, err := iopodman.ListContainers().Call(conn)
 	if err != nil {
-		return names, err
+		return ret, err
 	}
 
 	for _, cont := range containers {
 		// TODO: why is it Name*s*? there is a bug lurking here? docs are unclear.
 		if strings.HasPrefix(cont.Names, prefix) {
-			names = append(names, cont.Names)
+			ret = append(ret, cont)
 		}
 	}
-	return names, nil
+	return ret, nil
 }
 
 func GetPrefixedVolumes(conn *varlink.Connection, prefix string) ([]string, error) {

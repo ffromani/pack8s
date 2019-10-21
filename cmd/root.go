@@ -23,6 +23,7 @@ func NewRootCommand() *cobra.Command {
 	root.PersistentFlags().StringP("prefix", "p", "kubevirt", "Prefix to identify containers")
 
 	root.AddCommand(
+		NewPortCommand(),
 		NewRemoveCommand(),
 		NewRunCommand(),
 	)
