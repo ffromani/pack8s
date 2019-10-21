@@ -1,0 +1,4 @@
+#varlink call -m unix:/run/podman/io.podman/io.podman.GetInfo
+#varlink call -m unix:/run/podman/io.podman/io.podman.PullImage '{ "name": "docker.io/library/registry:2.7.1" }'
+#varlink call -m unix:/run/podman/io.podman/io.podman.ListContainers '{}' | less
+#varlink call -m unix:/run/podman/io.podman/io.podman.CreateContainer '{"create":{"args":["docker.io/library/redis"]}}'
