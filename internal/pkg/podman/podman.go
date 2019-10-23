@@ -109,3 +109,22 @@ func GetPrefixedVolumes(conn *varlink.Connection, prefix string) ([]string, erro
 	// TODO: how to implement this?
 	return nil, fmt.Errorf("not yet implemented")
 }
+
+func FindPrefixedContainer(prefixedName string) (iopodman.Container, error) {
+	containers := []iopodman.Container{}
+
+	conn, err := NewConnection()
+	if err != nil {
+		return iopodman.Container{}, err
+	}
+
+	containers, err = GetPrefixedContainers(conn, prefixedName)
+	if err != nil {
+		return iopodman.Container{}, err
+	}
+
+	if len(containers) != 1 {
+		return iopodman.Container{}, fmt.Errorf("failed to found the container with name %s", prefixedName)
+	}
+	return containers[0], nil
+}

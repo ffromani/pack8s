@@ -56,18 +56,9 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	conn, err := podman.NewConnection()
+	cont, err := podman.FindPrefixedContainer(prefix + "-" + containerName)
 	if err != nil {
 		return err
-	}
-
-	containers, err := podman.GetPrefixedContainers(conn, prefix+"-"+containerName)
-	if err != nil {
-		return err
-	}
-
-	if len(containers) != 1 {
-		return fmt.Errorf("failed to found the container with name %s", prefix+"-"+containerName)
 	}
 
 	portName := ""
@@ -79,19 +70,19 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		err = nil
 		switch portName {
 		case ports.PortNameSSH:
-			err = ports.PrintPublicPort(ports.PortSSH, containers[0].Ports)
+			err = ports.PrintPublicPort(ports.PortSSH, cont.Ports)
 		case ports.PortNameSSHWorker:
-			err = ports.PrintPublicPort(ports.PortSSHWorker, containers[0].Ports)
+			err = ports.PrintPublicPort(ports.PortSSHWorker, cont.Ports)
 		case ports.PortNameAPI:
-			err = ports.PrintPublicPort(ports.PortAPI, containers[0].Ports)
+			err = ports.PrintPublicPort(ports.PortAPI, cont.Ports)
 		case ports.PortNameRegistry:
-			err = ports.PrintPublicPort(ports.PortRegistry, containers[0].Ports)
+			err = ports.PrintPublicPort(ports.PortRegistry, cont.Ports)
 		case ports.PortNameOCP:
-			err = ports.PrintPublicPort(ports.PortOCP, containers[0].Ports)
+			err = ports.PrintPublicPort(ports.PortOCP, cont.Ports)
 		case ports.PortNameOCPConsole:
-			err = ports.PrintPublicPort(ports.PortOCPConsole, containers[0].Ports)
+			err = ports.PrintPublicPort(ports.PortOCPConsole, cont.Ports)
 		case ports.PortNameVNC:
-			err = ports.PrintPublicPort(ports.PortVNC, containers[0].Ports)
+			err = ports.PrintPublicPort(ports.PortVNC, cont.Ports)
 		}
 
 		if err != nil {
@@ -99,7 +90,7 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		}
 
 	} else {
-		for _, p := range containers[0].Ports {
+		for _, p := range cont.Ports {
 			fmt.Printf("%s/%s -> %s:%s\n", p.Container_port, p.Protocol, p.Host_ip, p.Host_port)
 		}
 	}

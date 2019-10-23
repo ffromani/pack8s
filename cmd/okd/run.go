@@ -17,7 +17,7 @@ import (
 	"github.com/fromanirh/pack8s/internal/pkg/ports"
 )
 
-type options struct {
+type okdRunOptions struct {
 	privileged     bool
 	masterMemory   string
 	masterCpu      string
@@ -35,7 +35,7 @@ type options struct {
 	randomPorts    bool
 }
 
-var opts options
+var okdRunOpts okdRunOptions
 
 // NewRunCommand returns command that runs OKD cluster
 func NewRunCommand() *cobra.Command {
@@ -46,21 +46,21 @@ func NewRunCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 	}
 
-	opts.privileged = true // always
-	run.Flags().StringVar(&opts.masterMemory, "master-memory", "12288", "amount of RAM in MB on the master")
-	run.Flags().StringVar(&opts.masterCpu, "master-cpu", "4", "number of CPU cores on the master")
-	run.Flags().StringVar(&opts.workers, "workers", "1", "number of cluster worker nodes to start")
-	run.Flags().StringVar(&opts.workersMemory, "workers-memory", "6144", "amount of RAM in MB per worker")
-	run.Flags().StringVar(&opts.workersCpu, "workers-cpu", "2", "number of CPU per worker")
-	run.Flags().StringVar(&opts.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
-	run.Flags().StringVar(&opts.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
-	run.Flags().UintVar(&opts.registryPort, "registry-port", 0, "port on localhost for the docker registry")
-	run.Flags().UintVar(&opts.ocpConsolePort, "ocp-console-port", 0, "port on localhost for the ocp console")
-	run.Flags().UintVar(&opts.k8sPort, "k8s-port", 0, "port on localhost for the k8s cluster")
-	run.Flags().UintVar(&opts.sshMasterPort, "ssh-master-port", 0, "port on localhost to ssh to master node")
-	run.Flags().UintVar(&opts.sshWorkerPort, "ssh-worker-port", 0, "port on localhost to ssh to worker node")
-	run.Flags().BoolVar(&opts.background, "background", false, "go to background after nodes are up")
-	run.Flags().BoolVar(&opts.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
+	okdRunOpts.privileged = true // always
+	run.Flags().StringVar(&okdRunOpts.masterMemory, "master-memory", "12288", "amount of RAM in MB on the master")
+	run.Flags().StringVar(&okdRunOpts.masterCpu, "master-cpu", "4", "number of CPU cores on the master")
+	run.Flags().StringVar(&okdRunOpts.workers, "workers", "1", "number of cluster worker nodes to start")
+	run.Flags().StringVar(&okdRunOpts.workersMemory, "workers-memory", "6144", "amount of RAM in MB per worker")
+	run.Flags().StringVar(&okdRunOpts.workersCpu, "workers-cpu", "2", "number of CPU per worker")
+	run.Flags().StringVar(&okdRunOpts.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
+	run.Flags().StringVar(&okdRunOpts.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
+	run.Flags().UintVar(&okdRunOpts.registryPort, "registry-port", 0, "port on localhost for the docker registry")
+	run.Flags().UintVar(&okdRunOpts.ocpConsolePort, "ocp-console-port", 0, "port on localhost for the ocp console")
+	run.Flags().UintVar(&okdRunOpts.k8sPort, "k8s-port", 0, "port on localhost for the k8s cluster")
+	run.Flags().UintVar(&okdRunOpts.sshMasterPort, "ssh-master-port", 0, "port on localhost to ssh to master node")
+	run.Flags().UintVar(&okdRunOpts.sshWorkerPort, "ssh-worker-port", 0, "port on localhost to ssh to worker node")
+	run.Flags().BoolVar(&okdRunOpts.background, "background", false, "go to background after nodes are up")
+	run.Flags().BoolVar(&okdRunOpts.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
 	return run
 }
 
@@ -72,11 +72,11 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	envs := []string{}
-	envs = append(envs, fmt.Sprintf("WORKERS=%s", opts.workers))
-	envs = append(envs, fmt.Sprintf("MASTER_MEMORY=%s", opts.masterMemory))
-	envs = append(envs, fmt.Sprintf("MASTER_CPU=%s", opts.masterCpu))
-	envs = append(envs, fmt.Sprintf("WORKERS_MEMORY=%s", opts.workersMemory))
-	envs = append(envs, fmt.Sprintf("WORKERS_CPU=%s", opts.workersCpu))
+	envs = append(envs, fmt.Sprintf("WORKERS=%s", okdRunOpts.workers))
+	envs = append(envs, fmt.Sprintf("MASTER_MEMORY=%s", okdRunOpts.masterMemory))
+	envs = append(envs, fmt.Sprintf("MASTER_CPU=%s", okdRunOpts.masterCpu))
+	envs = append(envs, fmt.Sprintf("WORKERS_MEMORY=%s", okdRunOpts.workersMemory))
+	envs = append(envs, fmt.Sprintf("WORKERS_CPU=%s", okdRunOpts.workersCpu))
 
 	portMap, err := ports.NewMappingFromFlags(cmd.Flags(), []ports.PortInfo{
 		ports.PortInfo{
@@ -140,9 +140,9 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		Env:        &envs,
 		Expose:     &clusterExpose,
 		Name:       &clusterContainerName,
-		Privileged: &opts.privileged,
+		Privileged: &okdRunOpts.privileged,
 		Publish:    &clusterPorts,
-		PublishAll: &opts.randomPorts,
+		PublishAll: &okdRunOpts.randomPorts,
 	})
 	if err != nil {
 		return err
@@ -158,7 +158,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	// TODO: how to use the user-supplied name?
 	var registryMounts mounts.MountMapping
-	if opts.registryVolume != "" {
+	if okdRunOpts.registryVolume != "" {
 		registryMounts, err = mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
 			mounts.MountInfo{
 				Name: fmt.Sprintf("%s-registry", prefix),
@@ -177,15 +177,15 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		Args:       []string{images.DockerRegistryImage},
 		Name:       &registryName,
 		Mount:      &registryMountsStrings,
-		Privileged: &opts.privileged,
+		Privileged: &okdRunOpts.privileged,
 		Network:    &clusterNetwork,
 	})
 	if err != nil {
 		return err
 	}
 
-	if opts.nfsData != "" {
-		nfsData, err := filepath.Abs(opts.nfsData)
+	if okdRunOpts.nfsData != "" {
+		nfsData, err := filepath.Abs(okdRunOpts.nfsData)
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Args:       []string{images.NFSGaneshaImage},
 			Name:       &nfsName,
 			Mount:      &nfsMounts,
-			Privileged: &opts.privileged,
+			Privileged: &okdRunOpts.privileged,
 			Network:    &clusterNetwork,
 		})
 		if err != nil {
@@ -217,7 +217,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// If background flag was specified, we don't want to clean up if we reach that state
-	if !opts.background {
+	if !okdRunOpts.background {
 		ldgr.Done <- fmt.Errorf("Done. please clean up")
 	}
 
