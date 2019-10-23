@@ -42,6 +42,27 @@ const (
 	PortNameOCPConsole = "console"
 )
 
+func NameToNumber(name string) (int, error) {
+	switch name {
+	case PortNameSSH:
+		return PortSSH, nil
+	case PortNameSSHWorker:
+		return PortSSHWorker, nil
+	case PortNameAPI:
+		return PortAPI, nil
+	case PortNameRegistry:
+		return PortRegistry, nil
+	case PortNameOCP:
+		return PortOCP, nil
+	case PortNameOCPConsole:
+		return PortOCPConsole, nil
+	case PortNameVNC:
+		return PortVNC, nil
+	default:
+		return 0, fmt.Errorf("unknown port: %s", name)
+	}
+}
+
 func ToStrings(ports ...int) []string {
 	res := []string{}
 	for _, port := range ports {

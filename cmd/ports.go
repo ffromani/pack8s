@@ -67,28 +67,15 @@ func showPorts(cmd *cobra.Command, args []string) error {
 	}
 
 	if portName != "" {
-		err = nil
-		switch portName {
-		case ports.PortNameSSH:
-			err = ports.PrintPublicPort(ports.PortSSH, cont.Ports)
-		case ports.PortNameSSHWorker:
-			err = ports.PrintPublicPort(ports.PortSSHWorker, cont.Ports)
-		case ports.PortNameAPI:
-			err = ports.PrintPublicPort(ports.PortAPI, cont.Ports)
-		case ports.PortNameRegistry:
-			err = ports.PrintPublicPort(ports.PortRegistry, cont.Ports)
-		case ports.PortNameOCP:
-			err = ports.PrintPublicPort(ports.PortOCP, cont.Ports)
-		case ports.PortNameOCPConsole:
-			err = ports.PrintPublicPort(ports.PortOCPConsole, cont.Ports)
-		case ports.PortNameVNC:
-			err = ports.PrintPublicPort(ports.PortVNC, cont.Ports)
-		}
-
+		port, err := ports.NameToNumber(portName)
 		if err != nil {
 			return err
 		}
 
+		err = ports.PrintPublicPort(port, cont.Ports)
+		if err != nil {
+			return err
+		}
 	} else {
 		for _, p := range cont.Ports {
 			fmt.Printf("%s/%s -> %s:%s\n", p.Container_port, p.Protocol, p.Host_ip, p.Host_port)
