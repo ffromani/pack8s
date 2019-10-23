@@ -5,8 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fromanirh/pack8s/iopodman"
-
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
@@ -29,12 +27,12 @@ func remove(cmd *cobra.Command, _ []string) error {
 
 	ctx := context.Background()
 
-	conn, err := podman.NewConnection(ctx)
+	hnd, err := podman.NewHandle(ctx)
 	if err != nil {
 		return err
 	}
 
-	containers, err := podman.GetPrefixedContainers(ctx, conn, prefix+"-")
+	containers, err := hnd.GetPrefixedContainers(prefix + "-")
 	if err != nil {
 		return err
 	}
@@ -43,7 +41,7 @@ func remove(cmd *cobra.Command, _ []string) error {
 	removeVolumes := true
 
 	for _, cont := range containers {
-		_, err := iopodman.RemoveContainer().Call(ctx, conn, cont.Id, force, removeVolumes)
+		_, err := hnd.RemoveContainer(cont.Id, force, removeVolumes)
 		if err != nil {
 			return err
 		}
@@ -51,7 +49,7 @@ func remove(cmd *cobra.Command, _ []string) error {
 
 	// TODO: needed?
 	/*
-		_, err = podman.GetPrefixedVolumes(conn, prefix)
+		_, err = podman.GetPrefixedVolumes(hnd, prefix)
 		if err != nil {
 			return err
 		}

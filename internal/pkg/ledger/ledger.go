@@ -1,24 +1,21 @@
 package ledger
 
 import (
-	"context"
 	"fmt"
 	"io"
 
-	"github.com/varlink/go/varlink"
-
+	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/iopodman"
 )
 
 type Ledger struct {
-	conn       *varlink.Connection
-	ctx        context.Context
+	hnd        podman.Handle
 	containers chan string
 	volumes    chan string
 	Done       chan error
 }
 
-func NewLedger(ctx context.Context, conn *varlink.Connection, errWriter io.Writer) Ledger {
+func NewLedger(hnd podman.Handle, errWriter io.Writer) Ledger {
 	containers := make(chan string)
 	volumes := make(chan string)
 	done := make(chan error)
@@ -36,7 +33,7 @@ func NewLedger(ctx context.Context, conn *varlink.Connection, errWriter io.Write
 			case err := <-done:
 				if err != nil {
 					for _, c := range createdContainers {
-						name, err := iopodman.RemoveContainer().Call(ctx, conn, c, true, false)
+						name, err := hnd.RemoveContainer(c, true, false)
 						if err == nil {
 							fmt.Printf("removed container: %v (%v)\n", name, c)
 						} else {
@@ -57,8 +54,7 @@ func NewLedger(ctx context.Context, conn *varlink.Connection, errWriter io.Write
 	}()
 
 	return Ledger{
-		conn:       conn,
-		ctx:        ctx,
+		hnd:        hnd,
 		containers: containers,
 		volumes:    volumes,
 		Done:       done,
@@ -66,9 +62,7 @@ func NewLedger(ctx context.Context, conn *varlink.Connection, errWriter io.Write
 }
 
 func (ld Ledger) MakeVolume(name string) (string, error) {
-	volName, err := iopodman.VolumeCreate().Call(ld.ctx, ld.conn, iopodman.VolumeCreateOpts{
-		VolumeName: name,
-	})
+	volName, err := ld.hnd.CreateNamedVolume(name)
 	if err != nil {
 		return volName, err
 	}
@@ -78,13 +72,13 @@ func (ld Ledger) MakeVolume(name string) (string, error) {
 }
 
 func (ld Ledger) RunContainer(conf iopodman.Create) (string, error) {
-	contID, err := iopodman.CreateContainer().Call(ld.ctx, ld.conn, conf)
+	contID, err := ld.hnd.CreateContainer(conf)
 	if err != nil {
 		return contID, err
 	}
 
 	ld.containers <- contID
-	if _, err := iopodman.StartContainer().Call(ld.ctx, ld.conn, contID); err != nil {
+	if _, err := ld.hnd.StartContainer(contID); err != nil {
 		return contID, err
 	}
 	return contID, nil

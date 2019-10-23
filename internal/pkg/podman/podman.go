@@ -5,9 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
 
@@ -15,10 +17,6 @@ import (
 
 	"github.com/varlink/go/varlink"
 )
-
-func NewConnection(ctx context.Context) (*varlink.Connection, error) {
-	return varlink.NewConnection(ctx, "unix:/run/io.projectatomic.podman")
-}
 
 func SprintError(methodname string, err error) string {
 	buf := new(bytes.Buffer)
@@ -83,16 +81,29 @@ func SprintError(methodname string, err error) string {
 	return buf.String()
 }
 
-func Terminal(ctx context.Context, conn *varlink.Connection, container string, args []string, file *os.File) error {
+type Handle struct {
+	ctx  context.Context
+	conn *varlink.Connection
+}
+
+func NewHandle(ctx context.Context) (Handle, error) {
+	conn, err := varlink.NewConnection(ctx, "unix:/run/io.projectatomic.podman")
+	return Handle{
+		ctx:  ctx,
+		conn: conn,
+	}, err
+}
+
+func (hnd Handle) Terminal(container string, args []string, file *os.File) error {
 	detachKeys := ""
 	start := false
 
-	err := iopodman.Attach().Call(ctx, conn, container, detachKeys, start)
+	err := iopodman.Attach().Call(hnd.ctx, hnd.conn, container, detachKeys, start)
 	if err != nil {
 		return err
 	}
 
-	socks, err := iopodman.GetAttachSockets().Call(ctx, conn, container)
+	socks, err := iopodman.GetAttachSockets().Call(hnd.ctx, hnd.conn, container)
 	if err != nil {
 		return err
 	}
@@ -129,7 +140,7 @@ func Terminal(ctx context.Context, conn *varlink.Connection, container string, a
 	}()
 
 	go func() {
-		err := iopodman.ExecContainer().Call(ctx, conn, iopodman.ExecOpts{
+		err := iopodman.ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
 			Name:       container,
 			Tty:        terminal.IsTerminal(int(file.Fd())),
 			Privileged: true,
@@ -141,8 +152,8 @@ func Terminal(ctx context.Context, conn *varlink.Connection, container string, a
 	return <-errChan
 }
 
-func Exec(ctx context.Context, conn *varlink.Connection, container string, args []string, out io.Writer) error {
-	return iopodman.ExecContainer().Call(ctx, conn, iopodman.ExecOpts{
+func (hnd Handle) Exec(container string, args []string, out io.Writer) error {
+	return iopodman.ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
 		Name:       container,
 		Tty:        true,
 		Privileged: true,
@@ -150,25 +161,9 @@ func Exec(ctx context.Context, conn *varlink.Connection, container string, args 
 	})
 }
 
-type Executor struct {
-	ctx  context.Context
-	conn *varlink.Connection
-}
-
-func NewExecutor(ctx context.Context, conn *varlink.Connection) Executor {
-	return Executor{
-		ctx:  ctx,
-		conn: conn,
-	}
-}
-
-func (ex Executor) Do(container string, args []string, out io.Writer) error {
-	return Exec(ex.ctx, ex.conn, container, args, out)
-}
-
-func GetPrefixedContainers(ctx context.Context, conn *varlink.Connection, prefix string) ([]iopodman.Container, error) {
+func (hnd Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, error) {
 	ret := []iopodman.Container{}
-	containers, err := iopodman.ListContainers().Call(ctx, conn)
+	containers, err := iopodman.ListContainers().Call(hnd.ctx, hnd.conn)
 	if err != nil {
 		return ret, err
 	}
@@ -182,20 +177,15 @@ func GetPrefixedContainers(ctx context.Context, conn *varlink.Connection, prefix
 	return ret, nil
 }
 
-func GetPrefixedVolumes(ctx context.Context, conn *varlink.Connection, prefix string) ([]string, error) {
+func (hnd Handle) GetPrefixedVolumes(prefix string) ([]string, error) {
 	// TODO: how to implement this?
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func FindPrefixedContainer(ctx context.Context, prefixedName string) (iopodman.Container, error) {
+func (hnd Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container, error) {
 	containers := []iopodman.Container{}
 
-	conn, err := NewConnection(ctx)
-	if err != nil {
-		return iopodman.Container{}, err
-	}
-
-	containers, err = GetPrefixedContainers(ctx, conn, prefixedName)
+	containers, err := hnd.GetPrefixedContainers(prefixedName)
 	if err != nil {
 		return iopodman.Container{}, err
 	}
@@ -204,4 +194,44 @@ func FindPrefixedContainer(ctx context.Context, prefixedName string) (iopodman.C
 		return iopodman.Container{}, fmt.Errorf("failed to found the container with name %s", prefixedName)
 	}
 	return containers[0], nil
+}
+
+func (hnd Handle) RemoveContainer(name string, force, removeVolumes bool) (string, error) {
+	return iopodman.RemoveContainer().Call(hnd.ctx, hnd.conn, name, force, removeVolumes)
+}
+
+func (hnd Handle) CreateNamedVolume(name string) (string, error) {
+	return iopodman.VolumeCreate().Call(hnd.ctx, hnd.conn, iopodman.VolumeCreateOpts{
+		VolumeName: name,
+	})
+}
+
+func (hnd Handle) CreateContainer(conf iopodman.Create) (string, error) {
+	return iopodman.CreateContainer().Call(hnd.ctx, hnd.conn, conf)
+}
+
+func (hnd Handle) StartContainer(contID string) (string, error) {
+	return iopodman.StartContainer().Call(hnd.ctx, hnd.conn, contID)
+}
+
+func (hnd Handle) WaitContainer(name string, interval int64) (int64, error) {
+	return iopodman.WaitContainer().Call(hnd.ctx, hnd.conn, name, interval)
+}
+
+func (hnd Handle) PullImage(ref string, out io.Writer) error {
+	tries := []int{0, 1, 2, 6}
+	for idx, i := range tries {
+		time.Sleep(time.Duration(i) * time.Second)
+
+		log.Printf("attempt #%d to download %s\n", idx, ref)
+
+		// TODO: print _some_ progress while this is going forward
+		_, err := iopodman.PullImage().Call(hnd.ctx, hnd.conn, ref)
+		if err != nil {
+			log.Printf("failed to download %s: %v\n", ref, err)
+			continue
+		}
+		return nil
+	}
+	return fmt.Errorf("failed to download %s %d times, giving up.", ref, len(tries))
 }

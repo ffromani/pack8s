@@ -31,9 +31,7 @@ func ssh(cmd *cobra.Command, args []string) error {
 
 	node := args[0]
 
-	ctx := context.Background()
-
-	conn, err := podman.NewConnection(ctx)
+	hnd, err := podman.NewHandle(context.Background())
 	if err != nil {
 		return err
 	}
@@ -42,9 +40,9 @@ func ssh(cmd *cobra.Command, args []string) error {
 	sshCommand := append([]string{"ssh.sh"}, args[1:]...)
 
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {
-		err = podman.Terminal(ctx, conn, container, sshCommand, os.Stdout)
+		err = hnd.Terminal(container, sshCommand, os.Stdout)
 	} else {
-		err = podman.Exec(ctx, conn, container, sshCommand, os.Stdout)
+		err = hnd.Exec(container, sshCommand, os.Stdout)
 	}
 	return err
 }

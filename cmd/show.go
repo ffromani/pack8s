@@ -27,12 +27,12 @@ func showContainers(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
-	conn, err := podman.NewConnection(ctx)
+	hnd, err := podman.NewHandle(ctx)
 	if err != nil {
 		return err
 	}
 
-	containers, err := podman.GetPrefixedContainers(ctx, conn, prefix+"-")
+	containers, err := hnd.GetPrefixedContainers(prefix + "-")
 	if err != nil {
 		return err
 	}

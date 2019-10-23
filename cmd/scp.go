@@ -77,8 +77,12 @@ func scp(cmd *cobra.Command, args []string) error {
 	src := args[0]
 	dst := args[1]
 
-	ctx := context.Background()
-	cont, err := podman.FindPrefixedContainer(ctx, prefix+"-"+scpOpts.containerName)
+	hnd, err := podman.NewHandle(context.Background())
+	if err != nil {
+		return err
+	}
+
+	cont, err := hnd.FindPrefixedContainer(prefix + "-" + scpOpts.containerName)
 	if err != nil {
 		return err
 	}

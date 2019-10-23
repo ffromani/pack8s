@@ -116,17 +116,14 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	cluster := args[0]
 
-	b := context.Background()
-	ctx, cancel := context.WithCancel(b)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	conn, err := podman.NewConnection(ctx)
+	hnd, err := podman.NewHandle(ctx)
 	if err != nil {
 		return err
 	}
 
-	exec := podman.NewExecutor(ctx, conn)
-
-	ldgr := ledger.NewLedger(ctx, conn, cmd.OutOrStderr())
+	ldgr := ledger.NewLedger(hnd, cmd.OutOrStderr())
 
 	defer func() {
 		ldgr.Done <- err
@@ -140,7 +137,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		ldgr.Done <- fmt.Errorf("Interrupt received, clean up")
 	}()
 	// Pull the cluster image
-	err = images.PullImage(ctx, conn, "docker.io/"+cluster, os.Stdout)
+	err = hnd.PullImage("docker.io/"+cluster, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -175,7 +172,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	dnsmasqNetwork := fmt.Sprintf("container:%s", dnsmasqID)
 
 	// Pull the registry image
-	err = images.PullImage(ctx, conn, images.DockerRegistryImage, os.Stdout)
+	err = hnd.PullImage(images.DockerRegistryImage, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -214,7 +211,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = images.PullImage(ctx, conn, images.NFSGaneshaImage, os.Stdout)
+		err = hnd.PullImage(images.NFSGaneshaImage, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -234,7 +231,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if runOpts.enableCeph {
-		err = images.PullImage(ctx, conn, images.CephImage, os.Stdout)
+		err = hnd.PullImage(images.CephImage, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -267,7 +264,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			os.Mkdir(logDir, 0755)
 		}
 
-		err = images.PullImage(ctx, conn, images.FluentdImage, os.Stdout)
+		err = hnd.PullImage(images.FluentdImage, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -343,17 +340,17 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = exec.Do(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
+		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
 		if err != nil {
 			return fmt.Errorf("checking for ssh.sh script for node %s failed: %s", nodeName, err)
 		}
 
 		//check if we have a special provision script
-		err = exec.Do(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
+		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
 		if err == nil {
-			err = exec.Do(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
+			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
 		} else {
-			err = exec.Do(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
+			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
 		}
 
 		if err != nil {
@@ -361,7 +358,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		go func(id string) {
-			iopodman.WaitContainer().Call(ctx, conn, id, int64(1*time.Second))
+			hnd.WaitContainer(id, int64(1*time.Second))
 			wg.Done()
 		}(contNodeID)
 	}
@@ -369,7 +366,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	if runOpts.enableCeph {
 		// XXX begin
 		keyRing := new(bytes.Buffer)
-		err := exec.Do(nodeContainer(prefix, "ceph"), []string{
+		err := hnd.Exec(nodeContainer(prefix, "ceph"), []string{
 			"/bin/bash",
 			"-c",
 			"ceph auth print-key connent.admin | base64",
@@ -380,7 +377,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 		nodeName := nodeNameFromIndex(1)
 		key := bytes.TrimSpace(keyRing.Bytes())
-		err = exec.Do(nodeContainer(prefix, nodeName), []string{
+		err = hnd.Exec(nodeContainer(prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			fmt.Sprintf("ssh.sh sudo sed -i \"s/replace-me/%s/g\" /tmp/ceph/ceph-secret.yaml", key),
@@ -388,7 +385,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			return err
 		}
-		err = exec.Do(nodeContainer(prefix, nodeName), []string{
+		err = hnd.Exec(nodeContainer(prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			"ssh.sh sudo /bin/bash < /scripts/ceph-csi.sh",
@@ -401,7 +398,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	// If logging is enabled, deploy the default fluent logging
 	if runOpts.logDir != "" {
 		nodeName := nodeNameFromIndex(1)
-		err := exec.Do(nodeContainer(prefix, nodeName), []string{
+		err := hnd.Exec(nodeContainer(prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			"ssh.sh sudo /bin/bash < /scripts/logging.sh",

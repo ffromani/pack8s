@@ -54,7 +54,12 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cont, err := podman.FindPrefixedContainer(context.Background(), prefix+"-"+containerName)
+	hnd, err := podman.NewHandle(context.Background())
+	if err != nil {
+		return err
+	}
+
+	cont, err := hnd.FindPrefixedContainer(prefix + "-" + containerName)
 	if err != nil {
 		return err
 	}

@@ -107,15 +107,14 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	cluster := args[0]
 
-	b := context.Background()
-	ctx, cancel := context.WithCancel(b)
+	ctx, cancel := context.WithCancel(context.Background())
 
-	conn, err := podman.NewConnection(ctx)
+	hnd, err := podman.NewHandle(ctx)
 	if err != nil {
 		return err
 	}
 
-	ldgr := ledger.NewLedger(ctx, conn, cmd.OutOrStderr())
+	ldgr := ledger.NewLedger(hnd, cmd.OutOrStderr())
 
 	defer func() {
 		ldgr.Done <- err
@@ -129,7 +128,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		ldgr.Done <- fmt.Errorf("Interrupt received, clean up")
 	}()
 	// Pull the cluster image
-	err = images.PullImage(ctx, conn, "docker.io/"+cluster, os.Stdout)
+	err = hnd.PullImage("docker.io/"+cluster, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -156,7 +155,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	clusterNetwork := fmt.Sprintf("container:%s", clusterID)
 
 	// Pull the registry image
-	err = images.PullImage(ctx, conn, images.DockerRegistryImage, os.Stdout)
+	err = hnd.PullImage(images.DockerRegistryImage, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -195,7 +194,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = images.PullImage(ctx, conn, images.NFSGaneshaImage, os.Stdout)
+		err = hnd.PullImage(images.NFSGaneshaImage, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -216,7 +215,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	// Run the cluster
 	fmt.Printf("Run the cluster\n")
-	err = podman.Exec(ctx, conn, clusterContainerName, []string{"/bin/bash", "-c", "/scripts/run.sh"}, os.Stdout)
+	err = hnd.Exec(clusterContainerName, []string{"/bin/bash", "-c", "/scripts/run.sh"}, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("failed to run the OKD cluster under the container %s: %s", clusterContainerName, err)
 	}
