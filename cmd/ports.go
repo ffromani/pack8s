@@ -28,10 +28,7 @@ Known port names are 'ssh', 'registry', 'ocp' and 'k8s'.
 			}
 
 			if len(args) == 1 {
-				switch args[0] {
-				case ports.PortNameSSH, ports.PortNameSSHWorker, ports.PortNameAPI, ports.PortNameOCP, ports.PortNameOCPConsole, ports.PortNameRegistry, ports.PortNameVNC:
-					return nil
-				default:
+				if !ports.IsKnownPortName(args[0]) {
 					return fmt.Errorf("unknown port name %s", args[0])
 				}
 			}

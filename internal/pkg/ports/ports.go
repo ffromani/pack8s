@@ -42,6 +42,15 @@ const (
 	PortNameOCPConsole = "console"
 )
 
+func IsKnownPortName(name string) bool {
+	switch name {
+	case PortNameSSH, PortNameSSHWorker, PortNameAPI, PortNameOCP, PortNameOCPConsole, PortNameRegistry, PortNameVNC:
+		return true
+	default:
+		return false
+	}
+}
+
 func NameToNumber(name string) (int, error) {
 	switch name {
 	case PortNameSSH:
