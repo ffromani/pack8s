@@ -11,7 +11,7 @@ to provide a drop-in podman-compatible replacement, hence `pack8s`
 Apache v2 (same as `kubevirtci`)
 
 ## build
-just Run
+just run
 ```bash
 make
 ```
