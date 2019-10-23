@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -76,7 +77,8 @@ func scp(cmd *cobra.Command, args []string) error {
 	src := args[0]
 	dst := args[1]
 
-	cont, err := podman.FindPrefixedContainer(prefix + "-" + scpOpts.containerName)
+	ctx := context.Background()
+	cont, err := podman.FindPrefixedContainer(ctx, prefix+"-"+scpOpts.containerName)
 	if err != nil {
 		return err
 	}

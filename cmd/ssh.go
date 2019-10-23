@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -30,7 +31,9 @@ func ssh(cmd *cobra.Command, args []string) error {
 
 	node := args[0]
 
-	conn, err := podman.NewConnection()
+	ctx := context.Background()
+
+	conn, err := podman.NewConnection(ctx)
 	if err != nil {
 		return err
 	}
@@ -39,9 +42,9 @@ func ssh(cmd *cobra.Command, args []string) error {
 	sshCommand := append([]string{"ssh.sh"}, args[1:]...)
 
 	if terminal.IsTerminal(int(os.Stdout.Fd())) {
-		err = podman.Terminal(conn, container, sshCommand, os.Stdout)
+		err = podman.Terminal(ctx, conn, container, sshCommand, os.Stdout)
 	} else {
-		err = podman.Exec(conn, container, sshCommand, os.Stdout)
+		err = podman.Exec(ctx, conn, container, sshCommand, os.Stdout)
 	}
 	return err
 }

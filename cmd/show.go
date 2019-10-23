@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -25,12 +26,13 @@ func showContainers(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	conn, err := podman.NewConnection()
+	ctx := context.Background()
+	conn, err := podman.NewConnection(ctx)
 	if err != nil {
 		return err
 	}
 
-	containers, err := podman.GetPrefixedContainers(conn, prefix+"-")
+	containers, err := podman.GetPrefixedContainers(ctx, conn, prefix+"-")
 	if err != nil {
 		return err
 	}

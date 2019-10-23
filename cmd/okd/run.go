@@ -1,6 +1,7 @@
 package okd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -106,12 +107,15 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	cluster := args[0]
 
-	conn, err := podman.NewConnection()
+	b := context.Background()
+	ctx, cancel := context.WithCancel(b)
+
+	conn, err := podman.NewConnection(ctx)
 	if err != nil {
 		return err
 	}
 
-	ldgr := ledger.NewLedger(conn, cmd.OutOrStderr())
+	ldgr := ledger.NewLedger(ctx, conn, cmd.OutOrStderr())
 
 	defer func() {
 		ldgr.Done <- err
@@ -121,10 +125,11 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, os.Interrupt)
 		<-interrupt
+		cancel()
 		ldgr.Done <- fmt.Errorf("Interrupt received, clean up")
 	}()
 	// Pull the cluster image
-	err = images.PullImage(conn, "docker.io/"+cluster, os.Stdout)
+	err = images.PullImage(ctx, conn, "docker.io/"+cluster, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -151,7 +156,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	clusterNetwork := fmt.Sprintf("container:%s", clusterID)
 
 	// Pull the registry image
-	err = images.PullImage(conn, images.DockerRegistryImage, os.Stdout)
+	err = images.PullImage(ctx, conn, images.DockerRegistryImage, os.Stdout)
 	if err != nil {
 		return err
 	}
@@ -190,7 +195,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = images.PullImage(conn, images.NFSGaneshaImage, os.Stdout)
+		err = images.PullImage(ctx, conn, images.NFSGaneshaImage, os.Stdout)
 		if err != nil {
 			return err
 		}
@@ -211,7 +216,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	// Run the cluster
 	fmt.Printf("Run the cluster\n")
-	err = podman.Exec(conn, clusterContainerName, []string{"/bin/bash", "-c", "/scripts/run.sh"}, os.Stdout)
+	err = podman.Exec(ctx, conn, clusterContainerName, []string{"/bin/bash", "-c", "/scripts/run.sh"}, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("failed to run the OKD cluster under the container %s: %s", clusterContainerName, err)
 	}

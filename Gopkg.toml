@@ -28,6 +28,10 @@
   name = "github.com/varlink/go"
   branch = "master"
 
+[[override]]
+  name = "golang.org/x/crypto"
+  revision = "5c40567a22f8"
+
 [prune]
   go-tests = true
   unused-packages = true

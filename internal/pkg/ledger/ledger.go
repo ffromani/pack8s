@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -11,12 +12,13 @@ import (
 
 type Ledger struct {
 	conn       *varlink.Connection
+	ctx        context.Context
 	containers chan string
 	volumes    chan string
 	Done       chan error
 }
 
-func NewLedger(conn *varlink.Connection, errWriter io.Writer) Ledger {
+func NewLedger(ctx context.Context, conn *varlink.Connection, errWriter io.Writer) Ledger {
 	containers := make(chan string)
 	volumes := make(chan string)
 	done := make(chan error)
@@ -34,7 +36,7 @@ func NewLedger(conn *varlink.Connection, errWriter io.Writer) Ledger {
 			case err := <-done:
 				if err != nil {
 					for _, c := range createdContainers {
-						name, err := iopodman.RemoveContainer().Call(conn, c, true, false)
+						name, err := iopodman.RemoveContainer().Call(ctx, conn, c, true, false)
 						if err == nil {
 							fmt.Printf("removed container: %v (%v)\n", name, c)
 						} else {
@@ -56,6 +58,7 @@ func NewLedger(conn *varlink.Connection, errWriter io.Writer) Ledger {
 
 	return Ledger{
 		conn:       conn,
+		ctx:        ctx,
 		containers: containers,
 		volumes:    volumes,
 		Done:       done,
@@ -63,7 +66,7 @@ func NewLedger(conn *varlink.Connection, errWriter io.Writer) Ledger {
 }
 
 func (ld Ledger) MakeVolume(name string) (string, error) {
-	volName, err := iopodman.VolumeCreate().Call(ld.conn, iopodman.VolumeCreateOpts{
+	volName, err := iopodman.VolumeCreate().Call(ld.ctx, ld.conn, iopodman.VolumeCreateOpts{
 		VolumeName: name,
 	})
 	if err != nil {
@@ -75,13 +78,13 @@ func (ld Ledger) MakeVolume(name string) (string, error) {
 }
 
 func (ld Ledger) RunContainer(conf iopodman.Create) (string, error) {
-	contID, err := iopodman.CreateContainer().Call(ld.conn, conf)
+	contID, err := iopodman.CreateContainer().Call(ld.ctx, ld.conn, conf)
 	if err != nil {
 		return contID, err
 	}
 
 	ld.containers <- contID
-	if _, err := iopodman.StartContainer().Call(ld.conn, contID); err != nil {
+	if _, err := iopodman.StartContainer().Call(ld.ctx, ld.conn, contID); err != nil {
 		return contID, err
 	}
 	return contID, nil

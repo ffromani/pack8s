@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -53,7 +54,7 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cont, err := podman.FindPrefixedContainer(prefix + "-" + containerName)
+	cont, err := podman.FindPrefixedContainer(context.Background(), prefix+"-"+containerName)
 	if err != nil {
 		return err
 	}

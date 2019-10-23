@@ -2,6 +2,7 @@ package podman
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -15,8 +16,8 @@ import (
 	"github.com/varlink/go/varlink"
 )
 
-func NewConnection() (*varlink.Connection, error) {
-	return varlink.NewConnection("unix:/run/io.projectatomic.podman")
+func NewConnection(ctx context.Context) (*varlink.Connection, error) {
+	return varlink.NewConnection(ctx, "unix:/run/io.projectatomic.podman")
 }
 
 func SprintError(methodname string, err error) string {
@@ -82,16 +83,16 @@ func SprintError(methodname string, err error) string {
 	return buf.String()
 }
 
-func Terminal(conn *varlink.Connection, container string, args []string, file *os.File) error {
+func Terminal(ctx context.Context, conn *varlink.Connection, container string, args []string, file *os.File) error {
 	detachKeys := ""
 	start := false
 
-	err := iopodman.Attach().Call(conn, container, detachKeys, start)
+	err := iopodman.Attach().Call(ctx, conn, container, detachKeys, start)
 	if err != nil {
 		return err
 	}
 
-	socks, err := iopodman.GetAttachSockets().Call(conn, container)
+	socks, err := iopodman.GetAttachSockets().Call(ctx, conn, container)
 	if err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func Terminal(conn *varlink.Connection, container string, args []string, file *o
 	}()
 
 	go func() {
-		err := iopodman.ExecContainer().Call(conn, iopodman.ExecOpts{
+		err := iopodman.ExecContainer().Call(ctx, conn, iopodman.ExecOpts{
 			Name:       container,
 			Tty:        terminal.IsTerminal(int(file.Fd())),
 			Privileged: true,
@@ -140,8 +141,8 @@ func Terminal(conn *varlink.Connection, container string, args []string, file *o
 	return <-errChan
 }
 
-func Exec(conn *varlink.Connection, container string, args []string, out io.Writer) error {
-	return iopodman.ExecContainer().Call(conn, iopodman.ExecOpts{
+func Exec(ctx context.Context, conn *varlink.Connection, container string, args []string, out io.Writer) error {
+	return iopodman.ExecContainer().Call(ctx, conn, iopodman.ExecOpts{
 		Name:       container,
 		Tty:        true,
 		Privileged: true,
@@ -149,9 +150,9 @@ func Exec(conn *varlink.Connection, container string, args []string, out io.Writ
 	})
 }
 
-func GetPrefixedContainers(conn *varlink.Connection, prefix string) ([]iopodman.Container, error) {
+func GetPrefixedContainers(ctx context.Context, conn *varlink.Connection, prefix string) ([]iopodman.Container, error) {
 	ret := []iopodman.Container{}
-	containers, err := iopodman.ListContainers().Call(conn)
+	containers, err := iopodman.ListContainers().Call(ctx, conn)
 	if err != nil {
 		return ret, err
 	}
@@ -165,20 +166,20 @@ func GetPrefixedContainers(conn *varlink.Connection, prefix string) ([]iopodman.
 	return ret, nil
 }
 
-func GetPrefixedVolumes(conn *varlink.Connection, prefix string) ([]string, error) {
+func GetPrefixedVolumes(ctx context.Context, conn *varlink.Connection, prefix string) ([]string, error) {
 	// TODO: how to implement this?
 	return nil, fmt.Errorf("not yet implemented")
 }
 
-func FindPrefixedContainer(prefixedName string) (iopodman.Container, error) {
+func FindPrefixedContainer(ctx context.Context, prefixedName string) (iopodman.Container, error) {
 	containers := []iopodman.Container{}
 
-	conn, err := NewConnection()
+	conn, err := NewConnection(ctx)
 	if err != nil {
 		return iopodman.Container{}, err
 	}
 
-	containers, err = GetPrefixedContainers(conn, prefixedName)
+	containers, err = GetPrefixedContainers(ctx, conn, prefixedName)
 	if err != nil {
 		return iopodman.Container{}, err
 	}

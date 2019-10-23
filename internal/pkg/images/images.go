@@ -1,6 +1,7 @@
 package images
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -22,7 +23,7 @@ const (
 	FluentdImage = "docker.io/fluent/fluentd:v1.2-debian"
 )
 
-func PullImage(conn *varlink.Connection, ref string, out io.Writer) error {
+func PullImage(ctx context.Context, conn *varlink.Connection, ref string, out io.Writer) error {
 	tries := []int{0, 1, 2, 6}
 	for idx, i := range tries {
 		time.Sleep(time.Duration(i) * time.Second)
@@ -30,7 +31,7 @@ func PullImage(conn *varlink.Connection, ref string, out io.Writer) error {
 		log.Printf("attempt #%d to download %s\n", idx, ref)
 
 		// TODO: print _some_ progress while this is going forward
-		_, err := iopodman.PullImage().Call(conn, ref)
+		_, err := iopodman.PullImage().Call(ctx, conn, ref)
 		if err != nil {
 			log.Printf("failed to download %s: %v\n", ref, err)
 			continue

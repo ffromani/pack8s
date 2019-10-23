@@ -18,20 +18,51 @@
   version = "v0.0.5"
 
 [[projects]]
-  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
+  digest = "1:524b71991fc7d9246cc7dc2d9e0886ccb97648091c63e30eef619e6862c955dd"
   name = "github.com/spf13/pflag"
   packages = ["."]
   pruneopts = "UT"
-  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
-  version = "v1.0.3"
+  revision = "2e9d26c8c37aae03e3f9d4e90b7116f5accb7cab"
+  version = "v1.0.5"
 
 [[projects]]
   branch = "master"
-  digest = "1:5e4f6b61b6e26f37b92bba2227cef2e542f8b0d0bdc6d468912c4a52e220841a"
+  digest = "1:0b2b511081bc21cd9096674d6db3c02873ad030f5aad2df6683943e066dd1979"
   name = "github.com/varlink/go"
-  packages = ["varlink"]
+  packages = [
+    "varlink",
+    "varlink/internal/ctxio",
+  ]
   pruneopts = "UT"
-  revision = "b83e34ab175fbe244b3b90d2e63efa4b736428d2"
+  revision = "4ecdbb8a36c22a58d1eff62e05bc0096ea104d0f"
+
+[[projects]]
+  digest = "1:90d51692e0c17ce68b8d2e4dbb36a21d7e7ff72230af4dad8a4eb0ad7a0eb8e5"
+  name = "golang.org/x/crypto"
+  packages = [
+    "curve25519",
+    "ed25519",
+    "ed25519/internal/edwards25519",
+    "internal/chacha20",
+    "internal/subtle",
+    "poly1305",
+    "ssh",
+    "ssh/terminal",
+  ]
+  pruneopts = "UT"
+  revision = "5c40567a22f8"
+
+[[projects]]
+  branch = "master"
+  digest = "1:fee31b48b43f43ff2f1d802c4fccf062b1b42df077acf669b8be40f119da6ab9"
+  name = "golang.org/x/sys"
+  packages = [
+    "cpu",
+    "unix",
+    "windows",
+  ]
+  pruneopts = "UT"
+  revision = "742c48ecaeb7c624c475e02f3eb0827ebb4970d4"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -40,6 +71,8 @@
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/varlink/go/varlink",
+    "golang.org/x/crypto/ssh",
+    "golang.org/x/crypto/ssh/terminal",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
