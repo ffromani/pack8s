@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"strings"
+
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/fromanirh/pack8s/iopodman"
 
 	"github.com/varlink/go/varlink"
 )
-
-var NotImplemented error = fmt.Errorf("Not yet implemented")
 
 func NewConnection() (*varlink.Connection, error) {
 	return varlink.NewConnection("unix:/run/io.projectatomic.podman")
@@ -78,6 +80,64 @@ func SprintError(methodname string, err error) string {
 		}
 	}
 	return buf.String()
+}
+
+func Terminal(conn *varlink.Connection, container string, args []string, file *os.File) error {
+	detachKeys := ""
+	start := false
+
+	err := iopodman.Attach().Call(conn, container, detachKeys, start)
+	if err != nil {
+		return err
+	}
+
+	socks, err := iopodman.GetAttachSockets().Call(conn, container)
+	if err != nil {
+		return err
+	}
+
+	attached, err := os.OpenFile(socks.Io_socket, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer attached.Close()
+
+	state, err := terminal.MakeRaw(int(file.Fd()))
+	if err != nil {
+		return err
+	}
+	defer terminal.Restore(int(file.Fd()), state)
+
+	errChan := make(chan error)
+
+	go func() {
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+		<-interrupt
+		close(errChan)
+	}()
+
+	go func() {
+		_, err := io.Copy(file, attached)
+		errChan <- err
+	}()
+
+	go func() {
+		_, err := io.Copy(attached, file)
+		errChan <- err
+	}()
+
+	go func() {
+		err := iopodman.ExecContainer().Call(conn, iopodman.ExecOpts{
+			Name:       container,
+			Tty:        terminal.IsTerminal(int(file.Fd())),
+			Privileged: true,
+			Cmd:        args,
+		})
+		errChan <- err
+	}()
+
+	return <-errChan
 }
 
 func Exec(conn *varlink.Connection, container string, args []string, out io.Writer) error {

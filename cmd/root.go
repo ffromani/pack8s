@@ -27,6 +27,7 @@ func NewRootCommand() *cobra.Command {
 		NewRemoveCommand(),
 		NewRunCommand(),
 		NewSCPCommand(),
+		NewSSHCommand(),
 		NewShowCommand(),
 	)
 
