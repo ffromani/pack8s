@@ -5,39 +5,39 @@
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
-  pruneopts = "UT"
+  pruneopts = "T"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
 
 [[projects]]
-  digest = "1:e096613fb7cf34743d49af87d197663cfccd61876e2219853005a57baedfa562"
+  digest = "1:0d40f08f9f1d486f6c56a0cb0d50f28ee1d216497adb7ea060b6dfe9587a2a3d"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  pruneopts = "UT"
+  pruneopts = "T"
   revision = "f2b07da1e2c38d5f12845a4f607e2e1018cbb1f5"
   version = "v0.0.5"
 
 [[projects]]
-  digest = "1:524b71991fc7d9246cc7dc2d9e0886ccb97648091c63e30eef619e6862c955dd"
+  digest = "1:b9ab7e761cae4fe0e7d82fff001e2cb618d30ce5d9129bb074ebf1d847791bde"
   name = "github.com/spf13/pflag"
   packages = ["."]
-  pruneopts = "UT"
+  pruneopts = "T"
   revision = "2e9d26c8c37aae03e3f9d4e90b7116f5accb7cab"
   version = "v1.0.5"
 
 [[projects]]
   branch = "master"
-  digest = "1:0b2b511081bc21cd9096674d6db3c02873ad030f5aad2df6683943e066dd1979"
+  digest = "1:187f1343e4ea5fb69112fde94424866eb4595cd27e84369ab52457a1d8a7395a"
   name = "github.com/varlink/go"
   packages = [
     "varlink",
     "varlink/internal/ctxio",
   ]
-  pruneopts = "UT"
+  pruneopts = "T"
   revision = "4ecdbb8a36c22a58d1eff62e05bc0096ea104d0f"
 
 [[projects]]
-  digest = "1:90d51692e0c17ce68b8d2e4dbb36a21d7e7ff72230af4dad8a4eb0ad7a0eb8e5"
+  digest = "1:91ace4ffadb383ae72769300b47e5174f7a31f6f440f3ca1a2169956e56dc3d0"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
@@ -49,19 +49,19 @@
     "ssh",
     "ssh/terminal",
   ]
-  pruneopts = "UT"
+  pruneopts = "T"
   revision = "5c40567a22f8"
 
 [[projects]]
   branch = "master"
-  digest = "1:fee31b48b43f43ff2f1d802c4fccf062b1b42df077acf669b8be40f119da6ab9"
+  digest = "1:15766a9c65837e311fbdd31ffd6015bea084d44981d92e48fb783609d0060453"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
     "windows",
   ]
-  pruneopts = "UT"
+  pruneopts = "T"
   revision = "742c48ecaeb7c624c475e02f3eb0827ebb4970d4"
 
 [solve-meta]
