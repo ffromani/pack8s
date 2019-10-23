@@ -150,6 +150,22 @@ func Exec(ctx context.Context, conn *varlink.Connection, container string, args 
 	})
 }
 
+type Executor struct {
+	ctx  context.Context
+	conn *varlink.Connection
+}
+
+func NewExecutor(ctx context.Context, conn *varlink.Connection) Executor {
+	return Executor{
+		ctx:  ctx,
+		conn: conn,
+	}
+}
+
+func (ex Executor) Do(container string, args []string, out io.Writer) error {
+	return Exec(ex.ctx, ex.conn, container, args, out)
+}
+
 func GetPrefixedContainers(ctx context.Context, conn *varlink.Connection, prefix string) ([]iopodman.Container, error) {
 	ret := []iopodman.Container{}
 	containers, err := iopodman.ListContainers().Call(ctx, conn)

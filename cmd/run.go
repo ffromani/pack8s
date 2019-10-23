@@ -124,6 +124,8 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
+	exec := podman.NewExecutor(ctx, conn)
+
 	ldgr := ledger.NewLedger(ctx, conn, cmd.OutOrStderr())
 
 	defer func() {
@@ -341,17 +343,17 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = podman.Exec(ctx, conn, contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
+		err = exec.Do(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
 		if err != nil {
 			return fmt.Errorf("checking for ssh.sh script for node %s failed: %s", nodeName, err)
 		}
 
 		//check if we have a special provision script
-		err = podman.Exec(ctx, conn, contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
+		err = exec.Do(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
 		if err == nil {
-			err = podman.Exec(ctx, conn, contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
+			err = exec.Do(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
 		} else {
-			err = podman.Exec(ctx, conn, contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
+			err = exec.Do(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
 		}
 
 		if err != nil {
@@ -367,7 +369,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	if runOpts.enableCeph {
 		// XXX begin
 		keyRing := new(bytes.Buffer)
-		err := podman.Exec(ctx, conn, nodeContainer(prefix, "ceph"), []string{
+		err := exec.Do(nodeContainer(prefix, "ceph"), []string{
 			"/bin/bash",
 			"-c",
 			"ceph auth print-key connent.admin | base64",
@@ -378,7 +380,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 		nodeName := nodeNameFromIndex(1)
 		key := bytes.TrimSpace(keyRing.Bytes())
-		err = podman.Exec(ctx, conn, nodeContainer(prefix, nodeName), []string{
+		err = exec.Do(nodeContainer(prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			fmt.Sprintf("ssh.sh sudo sed -i \"s/replace-me/%s/g\" /tmp/ceph/ceph-secret.yaml", key),
@@ -386,7 +388,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			return err
 		}
-		err = podman.Exec(ctx, conn, nodeContainer(prefix, nodeName), []string{
+		err = exec.Do(nodeContainer(prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			"ssh.sh sudo /bin/bash < /scripts/ceph-csi.sh",
@@ -399,7 +401,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	// If logging is enabled, deploy the default fluent logging
 	if runOpts.logDir != "" {
 		nodeName := nodeNameFromIndex(1)
-		err := podman.Exec(ctx, conn, nodeContainer(prefix, nodeName), []string{
+		err := exec.Do(nodeContainer(prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			"ssh.sh sudo /bin/bash < /scripts/logging.sh",
