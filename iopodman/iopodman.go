@@ -3744,7 +3744,7 @@ type ExecContainer_methods struct{}
 func ExecContainer() ExecContainer_methods { return ExecContainer_methods{} }
 
 func (m ExecContainer_methods) Call(ctx context.Context, c *varlink.Connection, opts_in_ ExecOpts) (err_ error) {
-	receive, err_ := m.Send(ctx, c, varlink.Upgrade, opts_in_)
+	receive, err_ := m.Send(ctx, c, 0, opts_in_)
 	if err_ != nil {
 		return
 	}
