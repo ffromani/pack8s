@@ -73,25 +73,23 @@ func remove(cmd *cobra.Command, _ []string) error {
 	removeVolumes := true
 
 	for _, cont := range containers {
-		_, err := hnd.RemoveContainer(cont.Id, force, removeVolumes)
+		_, err = hnd.StopContainer(cont.Id, 5) // TODO
+		if err != nil {
+			return err
+		}
+		_, err = hnd.RemoveContainer(cont, force, removeVolumes)
 		if err != nil {
 			return err
 		}
 	}
 
-	// TODO: needed?
-	/*
-		_, err = podman.GetPrefixedVolumes(hnd, prefix)
-		if err != nil {
-			return err
-		}
+	volumes, err := hnd.GetPrefixedVolumes(prefix)
+	if err != nil {
+		return err
+	}
 
-			for _, v := range volumes {
-				err := cli.VolumeRemove(context.Background(), v.Name, true)
-				if err != nil {
-					return err
-				}
-			}
-	*/
-	return nil
+	if len(volumes) > 0 {
+		err = hnd.RemoveVolumes(volumes)
+	}
+	return err
 }

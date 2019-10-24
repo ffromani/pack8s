@@ -190,9 +190,24 @@ func (hnd Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, er
 	return ret, nil
 }
 
-func (hnd Handle) GetPrefixedVolumes(prefix string) ([]string, error) {
-	// TODO: how to implement this?
-	return nil, fmt.Errorf("not yet implemented")
+func (hnd Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) {
+	ret := []iopodman.Volume{}
+	args := []string{}
+	all := true
+	volumes, err := iopodman.GetVolumes().Call(hnd.ctx, hnd.conn, args, all)
+	if err != nil {
+		return ret, err
+	}
+
+	log.Printf("found %d volumess in the system", len(volumes))
+	for _, vol := range volumes {
+		if strings.HasPrefix(vol.Name, prefix) {
+			log.Printf("matching volume: %s @(%s)\n", vol.Name, vol.MountPoint)
+			ret = append(ret, vol)
+		}
+	}
+	log.Printf("found %d volumes matching the prefix", len(ret))
+	return ret, err
 }
 
 func (hnd Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container, error) {
@@ -209,9 +224,22 @@ func (hnd Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container
 	return containers[0], nil
 }
 
-func (hnd Handle) RemoveContainer(name string, force, removeVolumes bool) (string, error) {
-	log.Printf("trying to remove: %s force=%v removeVolumes=%v\n", name, force, removeVolumes)
-	return iopodman.RemoveContainer().Call(hnd.ctx, hnd.conn, name, force, removeVolumes)
+func (hnd Handle) RemoveVolumes(volumes []iopodman.Volume) error {
+	volumeNames := []string{}
+	for _, vol := range volumes {
+		log.Printf("removing volume %s @%s", vol.Name, vol.MountPoint)
+		volumeNames = append(volumeNames, vol.Name)
+	}
+	_, _, err := iopodman.VolumeRemove().Call(hnd.ctx, hnd.conn, iopodman.VolumeRemoveOpts{
+		Volumes: volumeNames,
+		Force:   true,
+	})
+	return err
+}
+
+func (hnd Handle) RemoveContainer(cont iopodman.Container, force, removeVolumes bool) (string, error) {
+	log.Printf("trying to remove: %s (%s) force=%v removeVolumes=%v\n", cont.Names, cont.Id, force, removeVolumes)
+	return iopodman.RemoveContainer().Call(hnd.ctx, hnd.conn, cont.Id, force, removeVolumes)
 }
 
 func (hnd Handle) CreateNamedVolume(name string) (string, error) {
@@ -222,6 +250,10 @@ func (hnd Handle) CreateNamedVolume(name string) (string, error) {
 
 func (hnd Handle) CreateContainer(conf iopodman.Create) (string, error) {
 	return iopodman.CreateContainer().Call(hnd.ctx, hnd.conn, conf)
+}
+
+func (hnd Handle) StopContainer(name string, timeout int64) (string, error) {
+	return iopodman.StopContainer().Call(hnd.ctx, hnd.conn, name, timeout)
 }
 
 func (hnd Handle) StartContainer(contID string) (string, error) {
