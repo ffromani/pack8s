@@ -351,8 +351,10 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		//check if we have a special provision script
 		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
 		if err == nil {
+			log.Printf("using special provisioning script for %s\n", nodeName)
 			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
 		} else {
+			log.Printf("using generic provisioning script for %s\n", nodeName)
 			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
 		}
 
