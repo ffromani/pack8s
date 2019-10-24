@@ -18,6 +18,11 @@ make
 
 Or fetch one of the releases.
 
+## how to try it out?
+1. make sure your `kubevirtci` checkout includes [this PR](https://github.com/kubevirt/kubevirtci/pull/168).
+2. build (see above) `pack8s` and put it anywhere on your PATH
+3. use kubevirtci as usual (`make cluster-up`, `make cluster-down`...)
+
 ## container image
 No available. `pack8s` is meant to be a single, self contained, statically linked executable, so benefits of a container image are unclear.
 Contributions welcome, though.
