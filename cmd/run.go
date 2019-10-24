@@ -151,6 +151,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		ports.PortAPI, ports.PortVNC,
 	)
 	dnsmasqPorts := portMap.ToStrings()
+	dnsmasqLabels := []string{fmt.Sprintf("%s=000", podman.LabelGeneration)}
 	dnsmasqID, err := ldgr.RunContainer(iopodman.Create{
 		AddHost: &[]string{
 			"nfs:192.168.66.2",
@@ -163,6 +164,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			fmt.Sprintf("NUM_SECONDARY_NICS=%d", runOpts.secondaryNics),
 		},
 		Expose:     &dnsmasqExpose,
+		Label:      &dnsmasqLabels,
 		Name:       &dnsmasqName,
 		Privileged: &runOpts.privileged,
 		Publish:    &dnsmasqPorts,
@@ -197,9 +199,11 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	registryName := fmt.Sprintf("%s-registry", prefix)
 	registryMountsStrings := registryMounts.ToStrings()
+	registryLabels := []string{fmt.Sprintf("%s=0001", podman.LabelGeneration)}
 	_, err = ldgr.RunContainer(iopodman.Create{
 		Args:       []string{images.DockerRegistryImage},
 		Name:       &registryName,
+		Label:      &registryLabels,
 		Mount:      &registryMountsStrings,
 		Privileged: &runOpts.privileged,
 		Network:    &dnsmasqNetwork,
@@ -221,9 +225,11 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 		nfsName := fmt.Sprintf("%s-nfs", prefix)
 		nfsMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/data/nfs", nfsData)}
+		nfsLabels := []string{fmt.Sprintf("%s=010", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
 			Args:       []string{images.NFSGaneshaImage},
 			Name:       &nfsName,
+			Label:      &nfsLabels,
 			Mount:      &nfsMounts,
 			Privileged: &runOpts.privileged,
 			Network:    &dnsmasqNetwork,
@@ -240,6 +246,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		cephName := fmt.Sprintf("%s-ceph", prefix)
+		cephLabels := []string{fmt.Sprintf("%s=011", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
 			Args: []string{images.CephImage, "demo"},
 			Name: &cephName,
@@ -249,8 +256,9 @@ func run(cmd *cobra.Command, args []string) (err error) {
 				"DEMO_DAEMONS=osd,mds",
 				"CEPH_DEMO_UID=demo",
 			},
-			Privileged: &runOpts.privileged,
+			Label:      &cephLabels,
 			Network:    &dnsmasqNetwork,
+			Privileged: &runOpts.privileged,
 		})
 		if err != nil {
 			return err
@@ -274,6 +282,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 		fluentdMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/fluentd/log/collected", logDir)}
 		fluentdName := fmt.Sprintf("%s-fluentd", prefix)
+		fluentdLabels := []string{fmt.Sprintf("%s=012", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
 			Args: []string{
 				images.FluentdImage,
@@ -281,8 +290,9 @@ func run(cmd *cobra.Command, args []string) (err error) {
 				"-i", "\"<system>\n log_level debug\n</system>\n<source>\n@type  forward\n@log_level error\nport  24224\n</source>\n<match **>\n@type file\npath /fluentd/log/collected\n</match>\"",
 				"-p", "/fluentd/plugins", "$FLUENTD_OPT", "-v",
 			},
-			Name:       &fluentdName,
+			Label:      &fluentdLabels,
 			Mount:      &fluentdMounts,
+			Name:       &fluentdName,
 			Privileged: &runOpts.privileged,
 			Network:    &dnsmasqNetwork,
 		})
@@ -311,6 +321,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 		nodeName := nodeNameFromIndex(x + 1)
 		nodeNum := fmt.Sprintf("%02d", x+1)
+		nodeLabels := []string{fmt.Sprintf("%s=1%02d", podman.LabelGeneration, x)}
 		if runOpts.reverse {
 			nodeName = nodeNameFromIndex((int(runOpts.nodes) - x))
 			nodeNum = fmt.Sprintf("%02d", (int(runOpts.nodes) - x))
@@ -334,10 +345,11 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Env: &[]string{
 				fmt.Sprintf("NODE_NUM=%s", nodeNum),
 			},
-			Name:       &contNodeName,
+			Label:      &nodeLabels,
 			Mount:      &contNodeMountsStrings,
-			Privileged: &runOpts.privileged,
+			Name:       &contNodeName,
 			Network:    &dnsmasqNetwork,
+			Privileged: &runOpts.privileged,
 		})
 		if err != nil {
 			return err

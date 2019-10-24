@@ -139,10 +139,12 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		ports.PortOCPConsole, ports.PortAPI,
 	)
 	clusterPorts := portMap.ToStrings()
+	clusterLabels := []string{fmt.Sprintf("%s=000", podman.LabelGeneration)}
 	clusterID, err := ldgr.RunContainer(iopodman.Create{
 		Args:       []string{cluster},
 		Env:        &envs,
 		Expose:     &clusterExpose,
+		Label:      &clusterLabels,
 		Name:       &clusterContainerName,
 		Privileged: &okdRunOpts.privileged,
 		Publish:    &clusterPorts,
@@ -177,12 +179,14 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	registryName := fmt.Sprintf("%s-registry", prefix)
 	registryMountsStrings := registryMounts.ToStrings()
+	registryLabels := []string{fmt.Sprintf("%s=001", podman.LabelGeneration)}
 	_, err = ldgr.RunContainer(iopodman.Create{
 		Args:       []string{images.DockerRegistryImage},
-		Name:       &registryName,
+		Label:      &registryLabels,
 		Mount:      &registryMountsStrings,
-		Privileged: &okdRunOpts.privileged,
+		Name:       &registryName,
 		Network:    &clusterNetwork,
+		Privileged: &okdRunOpts.privileged,
 	})
 	if err != nil {
 		return err
@@ -201,12 +205,14 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 		nfsName := fmt.Sprintf("%s-nfs-ganesha", prefix)
 		nfsMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/data/nfs", nfsData)}
+		nfsLabels := []string{fmt.Sprintf("%s=010", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
 			Args:       []string{images.NFSGaneshaImage},
-			Name:       &nfsName,
+			Label:      &nfsLabels,
 			Mount:      &nfsMounts,
-			Privileged: &okdRunOpts.privileged,
+			Name:       &nfsName,
 			Network:    &clusterNetwork,
+			Privileged: &okdRunOpts.privileged,
 		})
 		if err != nil {
 			return err

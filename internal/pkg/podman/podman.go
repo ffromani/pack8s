@@ -18,6 +18,10 @@ import (
 	"github.com/varlink/go/varlink"
 )
 
+const (
+	LabelGeneration string = "io.kubevirt/pack8s.generation"
+)
+
 func SprintError(methodname string, err error) string {
 	buf := new(bytes.Buffer)
 	fmt.Fprintf(buf, "Error calling %s: ", methodname)

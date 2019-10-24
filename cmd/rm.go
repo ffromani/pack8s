@@ -3,8 +3,11 @@ package cmd
 import (
 	"context"
 	"log"
+	"sort"
 
 	"github.com/spf13/cobra"
+
+	"github.com/fromanirh/pack8s/iopodman"
 
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
@@ -18,6 +21,28 @@ func NewRemoveCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 	return rm
+}
+
+type containerList []iopodman.Container
+
+func (cl containerList) Len() int {
+	return len(cl)
+}
+
+func (cl containerList) Less(i, j int) bool {
+	contA := cl[i]
+	contB := cl[j]
+	genA := contA.Labels[podman.LabelGeneration]
+	genB := contB.Labels[podman.LabelGeneration]
+	if genA != "" && genB != "" {
+		// CAVEAT! we want the latest generation first, so we swap the condition
+		return genA > genB
+	}
+	return false // do not change the ordering
+}
+
+func (cl containerList) Swap(i, j int) {
+	cl[i], cl[j] = cl[j], cl[i]
 }
 
 func remove(cmd *cobra.Command, _ []string) error {
@@ -38,18 +63,16 @@ func remove(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	for ix := len(containers) - 1; ix >= 0; ix-- {
-		cont := containers[ix]
+	sort.Sort(containerList(containers))
+
+	for _, cont := range containers {
 		log.Printf("container to remove: %s (%s)\n", cont.Names, cont.Id)
 	}
 
 	force := true
 	removeVolumes := true
 
-	// stupid hack to remove node first, which depend on base container.
-	// TODO: fix properly
-	for ix := len(containers) - 1; ix >= 0; ix-- {
-		cont := containers[ix]
+	for _, cont := range containers {
 		_, err := hnd.RemoveContainer(cont.Id, force, removeVolumes)
 		if err != nil {
 			return err
