@@ -32,14 +32,17 @@ func showContainers(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	containers, err := hnd.GetPrefixedContainers(prefix + "-")
+	containers, err := hnd.GetPrefixedContainers(prefix)
 	if err != nil {
 		return err
 	}
 
-	for _, cont := range containers {
-		fmt.Printf("%32s\t%s\n", cont.Id, cont.Names)
+	if len(containers) >= 1 {
+		for _, cont := range containers {
+			fmt.Printf("%32s\t%s\n", cont.Id, cont.Names)
+		}
+	} else {
+		fmt.Printf("no containers found for cluster %s\n", prefix)
 	}
-
 	return nil
 }

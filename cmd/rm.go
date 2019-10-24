@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -32,15 +33,23 @@ func remove(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	containers, err := hnd.GetPrefixedContainers(prefix + "-")
+	containers, err := hnd.GetPrefixedContainers(prefix)
 	if err != nil {
 		return err
+	}
+
+	for ix := len(containers) - 1; ix >= 0; ix-- {
+		cont := containers[ix]
+		log.Printf("container to remove: %s (%s)\n", cont.Names, cont.Id)
 	}
 
 	force := true
 	removeVolumes := true
 
-	for _, cont := range containers {
+	// stupid hack to remove node first, which depend on base container.
+	// TODO: fix properly
+	for ix := len(containers) - 1; ix >= 0; ix-- {
+		cont := containers[ix]
 		_, err := hnd.RemoveContainer(cont.Id, force, removeVolumes)
 		if err != nil {
 			return err

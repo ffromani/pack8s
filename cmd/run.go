@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -83,6 +84,8 @@ func NewRunCommand() *cobra.Command {
 }
 
 func run(cmd *cobra.Command, args []string) (err error) {
+	log.Printf("running with config: %#v", runOpts)
+
 	prefix, err := cmd.Flags().GetString("prefix")
 	if err != nil {
 		return err

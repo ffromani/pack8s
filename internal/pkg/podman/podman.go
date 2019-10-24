@@ -86,8 +86,14 @@ type Handle struct {
 	conn *varlink.Connection
 }
 
+const (
+	DefaultSocket string = "unix:/run/podman/io.podman"
+)
+
 func NewHandle(ctx context.Context) (Handle, error) {
-	conn, err := varlink.NewConnection(ctx, "unix:/run/io.projectatomic.podman")
+	log.Printf("connecting to %s", DefaultSocket)
+	conn, err := varlink.NewConnection(ctx, DefaultSocket)
+	log.Printf("connected to %s", DefaultSocket)
 	return Handle{
 		ctx:  ctx,
 		conn: conn,
@@ -168,12 +174,15 @@ func (hnd Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, er
 		return ret, err
 	}
 
+	log.Printf("found %d containers in the system", len(containers))
 	for _, cont := range containers {
 		// TODO: why is it Name*s*? there is a bug lurking here? docs are unclear.
 		if strings.HasPrefix(cont.Names, prefix) {
+			log.Printf("matching container: %s (%s)\n", cont.Names, cont.Id)
 			ret = append(ret, cont)
 		}
 	}
+	log.Printf("found %d containers matching the prefix", len(ret))
 	return ret, nil
 }
 
@@ -197,6 +206,7 @@ func (hnd Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container
 }
 
 func (hnd Handle) RemoveContainer(name string, force, removeVolumes bool) (string, error) {
+	log.Printf("trying to remove: %s force=%v removeVolumes=%v\n", name, force, removeVolumes)
 	return iopodman.RemoveContainer().Call(hnd.ctx, hnd.conn, name, force, removeVolumes)
 }
 
