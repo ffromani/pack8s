@@ -12,6 +12,12 @@ import (
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
+type rmOptions struct {
+	prune bool
+}
+
+var rmOpts rmOptions
+
 // NewRemoveCommand returns command to remove the cluster
 func NewRemoveCommand() *cobra.Command {
 	rm := &cobra.Command{
@@ -20,6 +26,9 @@ func NewRemoveCommand() *cobra.Command {
 		RunE:  remove,
 		Args:  cobra.NoArgs,
 	}
+
+	rm.Flags().BoolVarP(&rmOpts.prune, "prune", "p", false, "prune removes unused volumes on the host")
+
 	return rm
 }
 
@@ -95,6 +104,13 @@ func remove(cmd *cobra.Command, _ []string) error {
 
 	if len(volumes) > 0 {
 		err = hnd.RemoveVolumes(volumes)
+		if err != nil {
+			return err
+		}
+	}
+
+	if rmOpts.prune {
+		err = hnd.PruneVolumes()
 	}
 	return err
 }

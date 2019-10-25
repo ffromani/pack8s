@@ -224,6 +224,12 @@ func (hnd Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container
 	return containers[0], nil
 }
 
+//PruneVolumes removes all unused volumes on the host.
+func (hnd Handle) PruneVolumes() error {
+	_, _, err := iopodman.VolumesPrune().Call(hnd.ctx, hnd.conn)
+	return err
+}
+
 func (hnd Handle) RemoveVolumes(volumes []iopodman.Volume) error {
 	volumeNames := []string{}
 	for _, vol := range volumes {
