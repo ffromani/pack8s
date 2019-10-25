@@ -1,0 +1,15 @@
+sudo: required
+dist: xenial
+language: go
+go: "1.12"
+
+branches:
+  only:
+  - master
+  - /^v[0-9]/
+
+jobs:
+  include:
+  - stage: Build pack8s
+    name: Build pack8s
+    script: make
