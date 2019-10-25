@@ -84,8 +84,6 @@ func NewRunCommand() *cobra.Command {
 }
 
 func run(cmd *cobra.Command, args []string) (err error) {
-	log.Printf("running with config: %#v", runOpts)
-
 	prefix, err := cmd.Flags().GetString("prefix")
 	if err != nil {
 		return err
@@ -359,22 +357,22 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			return err
 		}
+		/*
+			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
+			if err != nil {
+				return fmt.Errorf("checking for ssh.sh script for node %s failed: %s", nodeName, err)
+			}
 
-		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
-		if err != nil {
-			return fmt.Errorf("checking for ssh.sh script for node %s failed: %s", nodeName, err)
-		}
-
-		//check if we have a special provision script
-		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
-		if err == nil {
-			log.Printf("using special provisioning script for %s\n", nodeName)
-			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
-		} else {
-			log.Printf("using generic provisioning script for %s\n", nodeName)
-			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
-		}
-
+			//check if we have a special provision script
+			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
+			if err == nil {
+				log.Printf("using special provisioning script for %s\n", nodeName)
+				err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
+			} else {
+				log.Printf("using generic provisioning script for %s\n", nodeName)
+				err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
+			}
+		*/
 		if err != nil {
 			return fmt.Errorf("provisioning node %s failed: %s", nodeName, err)
 		}
