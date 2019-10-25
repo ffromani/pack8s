@@ -91,6 +91,11 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
+	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	if err != nil {
+		return err
+	}
+
 	portMap, err := ports.NewMappingFromFlags(cmd.Flags(), []ports.PortInfo{
 		ports.PortInfo{
 			ExposedPort: ports.PortSSH,
@@ -121,7 +126,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	hnd, err := podman.NewHandle(ctx)
+	hnd, err := podman.NewHandle(ctx, podmanSocket)
 	if err != nil {
 		return err
 	}

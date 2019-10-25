@@ -74,10 +74,15 @@ func scp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	if err != nil {
+		return err
+	}
+
 	src := args[0]
 	dst := args[1]
 
-	hnd, err := podman.NewHandle(context.Background())
+	hnd, err := podman.NewHandle(context.Background(), podmanSocket)
 	if err != nil {
 		return err
 	}

@@ -72,6 +72,11 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
+	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	if err != nil {
+		return err
+	}
+
 	envs := []string{}
 	envs = append(envs, fmt.Sprintf("WORKERS=%s", okdRunOpts.workers))
 	envs = append(envs, fmt.Sprintf("MASTER_MEMORY=%s", okdRunOpts.masterMemory))
@@ -109,7 +114,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	hnd, err := podman.NewHandle(ctx)
+	hnd, err := podman.NewHandle(ctx, podmanSocket)
 	if err != nil {
 		return err
 	}

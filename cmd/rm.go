@@ -51,9 +51,14 @@ func remove(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	if err != nil {
+		return err
+	}
+
 	ctx := context.Background()
 
-	hnd, err := podman.NewHandle(ctx)
+	hnd, err := podman.NewHandle(ctx, podmanSocket)
 	if err != nil {
 		return err
 	}
