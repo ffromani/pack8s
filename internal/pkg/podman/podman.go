@@ -264,20 +264,46 @@ func (hnd Handle) WaitContainer(name string, interval int64) (int64, error) {
 	return iopodman.WaitContainer().Call(hnd.ctx, hnd.conn, name, interval)
 }
 
-func (hnd Handle) PullImage(ref string, out io.Writer) error {
+func (hnd Handle) PullImage(ref string) error {
 	tries := []int{0, 1, 2, 6}
+	interval := 3 * time.Second
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
 	for idx, i := range tries {
 		time.Sleep(time.Duration(i) * time.Second)
 
-		log.Printf("attempt #%d to download %s\n", idx, ref)
-
-		// TODO: print _some_ progress while this is going forward
-		_, err := iopodman.PullImage().Call(hnd.ctx, hnd.conn, ref)
-		if err != nil {
-			log.Printf("failed to download %s: %v\n", ref, err)
-			continue
+		prefix := fmt.Sprintf("attempt #%d", idx)
+		log.Printf("%s to download '%s' - progress every %v\n", prefix, ref, interval)
+		err := hnd.pullImage(ticker, prefix, ref)
+		if err == nil {
+			return nil
 		}
-		return nil
 	}
 	return fmt.Errorf("failed to download %s %d times, giving up.", ref, len(tries))
+}
+
+func (hnd Handle) pullImage(ticker *time.Ticker, prefix, ref string) error {
+	var err error
+	errChan := make(chan error)
+	go func() {
+		_, err := iopodman.PullImage().Call(hnd.ctx, hnd.conn, ref)
+		errChan <- err
+	}()
+
+	for {
+		select {
+		case <-ticker.C:
+			log.Printf("%s: downloading...", prefix)
+		case err = <-errChan:
+			if err != nil {
+				log.Printf("%s: failed to download %s: %v\n", prefix, ref, err)
+			} else {
+				log.Printf("%s: downloaded: %s", prefix, ref)
+			}
+			return err
+		}
+	}
+
+	return fmt.Errorf("pull failed - internal error") // can't be reached
 }
