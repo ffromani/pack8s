@@ -49,12 +49,17 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	if err != nil {
+		return err
+	}
+
 	containerName, err := cmd.Flags().GetString("container-name")
 	if err != nil {
 		return err
 	}
 
-	hnd, err := podman.NewHandle(context.Background())
+	hnd, err := podman.NewHandle(context.Background(), podmanSocket)
 	if err != nil {
 		return err
 	}

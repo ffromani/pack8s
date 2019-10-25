@@ -29,9 +29,14 @@ func ssh(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	if err != nil {
+		return err
+	}
+
 	node := args[0]
 
-	hnd, err := podman.NewHandle(context.Background())
+	hnd, err := podman.NewHandle(context.Background(), podmanSocket)
 	if err != nil {
 		return err
 	}

@@ -94,10 +94,13 @@ const (
 	DefaultSocket string = "unix:/run/podman/io.podman"
 )
 
-func NewHandle(ctx context.Context) (Handle, error) {
-	log.Printf("connecting to %s", DefaultSocket)
-	conn, err := varlink.NewConnection(ctx, DefaultSocket)
-	log.Printf("connected to %s", DefaultSocket)
+func NewHandle(ctx context.Context, socket string) (Handle, error) {
+	if socket == "" {
+		socket = DefaultSocket
+	}
+	log.Printf("connecting to %s", socket)
+	conn, err := varlink.NewConnection(ctx, socket)
+	log.Printf("connected to %s", socket)
 	return Handle{
 		ctx:  ctx,
 		conn: conn,
