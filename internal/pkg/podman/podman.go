@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	DefaultSocket   string = "unix:/run/podman/io.podman"
 	LabelGeneration string = "io.kubevirt/pack8s.generation"
 )
 
@@ -89,10 +90,6 @@ type Handle struct {
 	ctx  context.Context
 	conn *varlink.Connection
 }
-
-const (
-	DefaultSocket string = "unix:/run/podman/io.podman"
-)
 
 func NewHandle(ctx context.Context, socket string) (Handle, error) {
 	if socket == "" {

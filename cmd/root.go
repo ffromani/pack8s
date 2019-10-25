@@ -23,7 +23,7 @@ func NewRootCommand() *cobra.Command {
 	}
 
 	root.PersistentFlags().StringP("prefix", "p", "kubevirt", "Prefix to identify containers")
-	root.PersistentFlags().StringP("podman-socket", "s", "kubevirt", "Path to podman-socket")
+	root.PersistentFlags().StringP("podman-socket", "s", podman.DefaultSocket, "Path to podman-socket")
 
 	root.AddCommand(
 		NewPortCommand(),
