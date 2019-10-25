@@ -58,12 +58,17 @@ $ sudo systemctl daemon-reload
 $ sudo systemd-tmpfiles --create
 $ sudo systemctl enable --now io.podman.socket
 ```
-The directory and socket now belongs to the podman group
+The directory and socket now belongs to the `podman` group
 ```bash
 $ sudo ls -al /run/podman
 drwxr-x---.  2 root podman   60 14. Jan 14:50 .
 drwxr-xr-x. 51 root root   1420 14. Jan 14:36 ..
 srw-rw----.  1 root podman    0 14. Jan 14:50 io.podman
+```
+
+Last step: add your user to the `podman` group. Example:
+```bash
+$ sudo usermod -G podman -a $USER
 ```
 
 ## container image
