@@ -27,6 +27,7 @@ func NewRootCommand() *cobra.Command {
 
 	root.AddCommand(
 		NewPortCommand(),
+		NewPullCommand(),
 		NewRemoveCommand(),
 		NewRunCommand(),
 		NewSCPCommand(),

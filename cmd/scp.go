@@ -59,7 +59,7 @@ func NewSCPCommand() *cobra.Command {
 		Use:   "scp SRC DST",
 		Short: "scp copies files from master node to the local host",
 		RunE:  scp,
-		Args:  cobra.MinimumNArgs(2),
+		Args:  cobra.ExactArgs(2),
 	}
 
 	ssh.Flags().StringVar(&scpOpts.containerName, "container-name", "dnsmasq", "the container name to SSH copy from")

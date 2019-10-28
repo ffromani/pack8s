@@ -133,7 +133,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		ldgr.Done <- fmt.Errorf("Interrupt received, clean up")
 	}()
 	// Pull the cluster image
-	err = hnd.PullImage("docker.io/"+cluster, os.Stdout)
+	err = hnd.PullImage("docker.io/" + cluster)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	clusterNetwork := fmt.Sprintf("container:%s", clusterID)
 
 	// Pull the registry image
-	err = hnd.PullImage(images.DockerRegistryImage, os.Stdout)
+	err = hnd.PullImage(images.DockerRegistryImage)
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = hnd.PullImage(images.NFSGaneshaImage, os.Stdout)
+		err = hnd.PullImage(images.NFSGaneshaImage)
 		if err != nil {
 			return err
 		}
