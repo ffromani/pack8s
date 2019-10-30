@@ -26,6 +26,7 @@ Or fetch one of the releases.
 
 ## local box setup
 Excerpt taken from [this blog post](https://podman.io/blogs/2019/01/16/podman-varlink.html)
+See also [this other blog post](https://www.projectatomic.io/blog/2018/05/podman-varlink/)
 
 ### Set up Podman on the Fedora/RHEL machine
 ```bash
