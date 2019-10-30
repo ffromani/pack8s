@@ -7,6 +7,9 @@ We want to add podman support to [kubevirtci](https://github.com/kubevirt/kubevi
 `gocli` makes not much sense since the tool is simple and very stable. The quicker and safer way is
 to provide a drop-in podman-compatible replacement, hence `pack8s`
 
+## How do you pronounce "pack8s"?
+It is pronounced "pak-eight-z", much like "packets".
+
 ## license
 Apache v2 (same as `kubevirtci`)
 
@@ -25,8 +28,8 @@ Or fetch one of the releases.
 4. use kubevirtci as usual (`make cluster-up`, `make cluster-down`...).
 
 ## local box setup
-Excerpt taken from [this blog post](https://podman.io/blogs/2019/01/16/podman-varlink.html)
-See also [this other blog post](https://www.projectatomic.io/blog/2018/05/podman-varlink/)
+Excerpt taken from [this blog post](https://podman.io/blogs/2019/01/16/podman-varlink.html).
+See also [this other blog post](https://www.projectatomic.io/blog/2018/05/podman-varlink/).
 
 ### Set up Podman on the Fedora/RHEL machine
 ```bash
