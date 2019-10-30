@@ -30,7 +30,7 @@
 
 [[override]]
   name = "golang.org/x/crypto"
-  revision = "5c40567a22f8"
+  revision = "5c40567a22f818bd14a1ea7245dad9f8ef0691aa"
 
 [prune]
   go-tests = true
