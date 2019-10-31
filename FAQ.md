@@ -10,6 +10,6 @@ in time we need to evaluate if it is better to fix (or wait for a fix) the outst
 
 ### Why doesn't `pack8s` do $SOMETHING
 We are after a `gocli` replacement, we don't aim to provide a generic tool, let another a `podman` replacement.
-If we added subcommands or options with respect to `gocli`, it is because it allowed us to test things more easily or for
-developer convenience.
+We may however add subcommands or options not present in `gocli`, if it makes easier to test flows or if makes development
+more convenient.
 
