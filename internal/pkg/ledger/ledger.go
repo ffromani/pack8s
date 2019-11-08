@@ -10,13 +10,13 @@ import (
 )
 
 type Ledger struct {
-	hnd        podman.Handle
+	hnd        *podman.Handle
 	containers chan string
 	volumes    chan string
 	Done       chan error
 }
 
-func NewLedger(hnd podman.Handle, errWriter io.Writer) Ledger {
+func NewLedger(hnd *podman.Handle, errWriter io.Writer) Ledger {
 	containers := make(chan string)
 	volumes := make(chan string)
 	done := make(chan error)

@@ -25,7 +25,7 @@
 #   unused-packages = true
 
 [[override]]
-  name = "github.com/varlink/go"
+  name = "github.com/fromanirh/varlink-go"
   branch = "master"
 
 [[override]]

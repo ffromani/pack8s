@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/varlink/go/varlink"
+	"github.com/fromanirh/varlink-go/varlink"
 )
 
 // Generated type declarations

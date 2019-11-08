@@ -13,9 +13,11 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/fromanirh/pack8s/iopodman"
+	"github.com/fromanirh/varlink-go/varlink"
 
-	"github.com/varlink/go/varlink"
+	"github.com/fromanirh/pack8s/pkg/varlinkapi/virtwriter"
+
+	"github.com/fromanirh/pack8s/iopodman"
 )
 
 const (
@@ -87,24 +89,46 @@ func SprintError(methodname string, err error) string {
 }
 
 type Handle struct {
-	ctx  context.Context
-	conn *varlink.Connection
+	socket string
+	ctx    context.Context
+	conn   *varlink.Connection
 }
 
-func NewHandle(ctx context.Context, socket string) (Handle, error) {
+func NewHandle(ctx context.Context, socket string) (*Handle, error) {
 	if socket == "" {
 		socket = DefaultSocket
 	}
 	log.Printf("connecting to %s", socket)
 	conn, err := varlink.NewConnection(ctx, socket)
 	log.Printf("connected to %s", socket)
-	return Handle{
-		ctx:  ctx,
-		conn: conn,
+	return &Handle{
+		socket: socket,
+		ctx:    ctx,
+		conn:   conn,
 	}, err
 }
 
-func (hnd Handle) Terminal(container string, args []string, file *os.File) error {
+func (hnd *Handle) reconnect() (bool, error) {
+	if hnd.conn == nil {
+		var err error
+		hnd.conn, err = varlink.NewConnection(hnd.ctx, hnd.socket)
+		log.Printf("reconnected to %s (err=%v)", hnd.socket, err)
+		return true, err
+	}
+	return false, nil
+}
+
+func (hnd *Handle) disconnect() error {
+	var err error
+	if hnd.conn != nil {
+		err = hnd.conn.Close()
+		hnd.conn = nil
+		log.Printf("disconnected from %s (err=%v)", hnd.socket, err)
+	}
+	return err
+}
+
+func (hnd *Handle) Terminal(container string, args []string, file *os.File) error {
 	detachKeys := ""
 	start := false
 
@@ -162,16 +186,47 @@ func (hnd Handle) Terminal(container string, args []string, file *os.File) error
 	return <-errChan
 }
 
-func (hnd Handle) Exec(container string, args []string, out io.Writer) error {
-	return iopodman.ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
+func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
+	log.Printf("exec start")
+	_, err := hnd.reconnect()
+	if err != nil {
+		return err
+	}
+	defer hnd.disconnect()
+
+	rd, err := ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
 		Name:       container,
 		Tty:        true,
 		Privileged: true,
 		Cmd:        args,
 	})
+	log.Printf("exec call done")
+
+	if err != nil {
+		return err
+	}
+
+	ecChan := make(chan int, 1)
+	errChan := make(chan error, 1)
+	go func() {
+		// Read from the wire and direct to stdout or stderr
+		err := virtwriter.Reader(rd, os.Stdout, os.Stderr, nil, ecChan)
+		errChan <- err
+	}()
+
+	err = <-errChan
+	if err != nil {
+		return err
+	}
+	rc := <-ecChan
+	log.Printf("exec done -> %d", rc)
+	if rc != 0 {
+		return fmt.Errorf("exec failed: rc=%d", rc)
+	}
+	return nil
 }
 
-func (hnd Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, error) {
+func (hnd *Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, error) {
 	ret := []iopodman.Container{}
 	containers, err := iopodman.ListContainers().Call(hnd.ctx, hnd.conn)
 	if err != nil {
@@ -190,7 +245,7 @@ func (hnd Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, er
 	return ret, nil
 }
 
-func (hnd Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) {
+func (hnd *Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) {
 	ret := []iopodman.Volume{}
 	args := []string{}
 	all := true
@@ -210,7 +265,7 @@ func (hnd Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) {
 	return ret, err
 }
 
-func (hnd Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container, error) {
+func (hnd *Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container, error) {
 	containers := []iopodman.Container{}
 
 	containers, err := hnd.GetPrefixedContainers(prefixedName)
@@ -225,12 +280,12 @@ func (hnd Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container
 }
 
 //PruneVolumes removes all unused volumes on the host.
-func (hnd Handle) PruneVolumes() error {
+func (hnd *Handle) PruneVolumes() error {
 	_, _, err := iopodman.VolumesPrune().Call(hnd.ctx, hnd.conn)
 	return err
 }
 
-func (hnd Handle) RemoveVolumes(volumes []iopodman.Volume) error {
+func (hnd *Handle) RemoveVolumes(volumes []iopodman.Volume) error {
 	volumeNames := []string{}
 	for _, vol := range volumes {
 		log.Printf("removing volume %s @%s", vol.Name, vol.MountPoint)
@@ -243,34 +298,34 @@ func (hnd Handle) RemoveVolumes(volumes []iopodman.Volume) error {
 	return err
 }
 
-func (hnd Handle) RemoveContainer(cont iopodman.Container, force, removeVolumes bool) (string, error) {
+func (hnd *Handle) RemoveContainer(cont iopodman.Container, force, removeVolumes bool) (string, error) {
 	log.Printf("trying to remove: %s (%s) force=%v removeVolumes=%v\n", cont.Names, cont.Id, force, removeVolumes)
 	return iopodman.RemoveContainer().Call(hnd.ctx, hnd.conn, cont.Id, force, removeVolumes)
 }
 
-func (hnd Handle) CreateNamedVolume(name string) (string, error) {
+func (hnd *Handle) CreateNamedVolume(name string) (string, error) {
 	return iopodman.VolumeCreate().Call(hnd.ctx, hnd.conn, iopodman.VolumeCreateOpts{
 		VolumeName: name,
 	})
 }
 
-func (hnd Handle) CreateContainer(conf iopodman.Create) (string, error) {
+func (hnd *Handle) CreateContainer(conf iopodman.Create) (string, error) {
 	return iopodman.CreateContainer().Call(hnd.ctx, hnd.conn, conf)
 }
 
-func (hnd Handle) StopContainer(name string, timeout int64) (string, error) {
+func (hnd *Handle) StopContainer(name string, timeout int64) (string, error) {
 	return iopodman.StopContainer().Call(hnd.ctx, hnd.conn, name, timeout)
 }
 
-func (hnd Handle) StartContainer(contID string) (string, error) {
+func (hnd *Handle) StartContainer(contID string) (string, error) {
 	return iopodman.StartContainer().Call(hnd.ctx, hnd.conn, contID)
 }
 
-func (hnd Handle) WaitContainer(name string, interval int64) (int64, error) {
+func (hnd *Handle) WaitContainer(name string, interval int64) (int64, error) {
 	return iopodman.WaitContainer().Call(hnd.ctx, hnd.conn, name, interval)
 }
 
-func (hnd Handle) PullImage(ref string) error {
+func (hnd *Handle) PullImage(ref string) error {
 	tries := []int{0, 1, 2, 6}
 	interval := 3 * time.Second
 	ticker := time.NewTicker(interval)
@@ -289,7 +344,7 @@ func (hnd Handle) PullImage(ref string) error {
 	return fmt.Errorf("failed to download %s %d times, giving up.", ref, len(tries))
 }
 
-func (hnd Handle) pullImage(ticker *time.Ticker, prefix, ref string) error {
+func (hnd *Handle) pullImage(ticker *time.Ticker, prefix, ref string) error {
 	var err error
 	errChan := make(chan error)
 	go func() {
