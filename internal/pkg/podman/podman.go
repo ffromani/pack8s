@@ -13,9 +13,11 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/fromanirh/pack8s/iopodman"
+	"github.com/fromanirh/varlink-go/varlink"
 
-	"github.com/varlink/go/varlink"
+	"github.com/fromanirh/pack8s/pkg/varlinkapi/virtwriter"
+
+	"github.com/fromanirh/pack8s/iopodman"
 )
 
 const (
@@ -163,12 +165,34 @@ func (hnd Handle) Terminal(container string, args []string, file *os.File) error
 }
 
 func (hnd Handle) Exec(container string, args []string, out io.Writer) error {
-	return iopodman.ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
+	rd, err := ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
 		Name:       container,
 		Tty:        true,
 		Privileged: true,
 		Cmd:        args,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	ecChan := make(chan int, 1)
+	errChan := make(chan error, 1)
+	go func() {
+		// Read from the wire and direct to stdout or stderr
+		err := virtwriter.Reader(rd, os.Stdout, os.Stderr, nil, ecChan)
+		errChan <- err
+	}()
+
+	err = <-errChan
+	if err != nil {
+		return err
+	}
+	rc := <-ecChan
+	if rc != 0 {
+		return fmt.Errorf("exec failed: rc=%d", rc)
+	}
+	return nil
 }
 
 func (hnd Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, error) {
