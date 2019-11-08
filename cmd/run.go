@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -356,26 +357,29 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			return err
 		}
-		/*
-			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
-			if err != nil {
-				return fmt.Errorf("checking for ssh.sh script for node %s failed: %s", nodeName, err)
-			}
 
-			//check if we have a special provision script
-			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
-			if err == nil {
-				log.Printf("using special provisioning script for %s\n", nodeName)
-				err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
-			} else {
-				log.Printf("using generic provisioning script for %s\n", nodeName)
-				err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
-			}
-		*/
+		log.Printf("waiting on node %s for SSH availability\n", nodeName)
+		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
+		if err != nil {
+			return fmt.Errorf("checking for ssh.sh script for node %s failed: %s", nodeName, err)
+		}
+		log.Printf("node %s has SSH available!\n", nodeName)
+
+		log.Printf("checking for /scripts/%s.sh\n", nodeName)
+		//check if we have a special provision script
+		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
+		if err == nil {
+			log.Printf("using special provisioning script for %s\n", nodeName)
+			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
+		} else {
+			log.Printf("using generic provisioning script for %s\n", nodeName)
+			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
+		}
 		if err != nil {
 			return fmt.Errorf("provisioning node %s failed: %s", nodeName, err)
 		}
 
+		log.Printf("waiting for %s\n", contNodeID)
 		go func(id string) {
 			hnd.WaitContainer(id, int64(1*time.Second))
 			wg.Done()
