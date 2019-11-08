@@ -1,7 +1,7 @@
 all: build
 
 build:
-	./hack/build/build.sh
+	./hack/build/build.sh ${VERSION}
 
 deps:
 	dep ensure
@@ -27,6 +27,5 @@ prep: generate fmt
 release: build
 	mkdir -p _out
 	cp pack8s _out/pack8s-${VERSION}-linux-amd64
-	hack/container/docker-push.sh ${VERSION}
 
 .PHONY: all build deps fmt clean prep
