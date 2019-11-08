@@ -3,7 +3,7 @@ package virtwriter
 import (
 	"bufio"
 	"encoding/binary"
-	"encoding/json"
+	//	"encoding/json"
 	"io"
 	"time"
 
@@ -138,24 +138,24 @@ func Reader(r *bufio.Reader, output, errput, input io.Writer /*resize chan remot
 				}
 			}
 		case TerminalResize:
-			if resize != nil {
-				out := make([]byte, messageSize)
-				if messageSize > 0 {
-					_, err = io.ReadFull(r, out)
+			/*
+				if resize != nil {
+					out := make([]byte, messageSize)
+					if messageSize > 0 {
+						_, err = io.ReadFull(r, out)
 
-					if err != nil {
-						return err
+						if err != nil {
+							return err
+						}
 					}
+						// Resize events come over in bytes, need to be reserialized
+						resizeEvent := remotecommand.TerminalSize{}
+						if err := json.Unmarshal(out, &resizeEvent); err != nil {
+							return err
+						}
+						resize <- resizeEvent
 				}
-				/*
-					// Resize events come over in bytes, need to be reserialized
-					resizeEvent := remotecommand.TerminalSize{}
-					if err := json.Unmarshal(out, &resizeEvent); err != nil {
-						return err
-					}
-					resize <- resizeEvent
-				*/
-			}
+			*/
 		case Quit:
 			out := make([]byte, messageSize)
 			if messageSize > 0 {
