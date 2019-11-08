@@ -27,7 +27,7 @@ func NewRemoveCommand() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
-	rm.Flags().BoolVarP(&rmOpts.prune, "prune", "p", false, "prune removes unused volumes on the host")
+	rm.Flags().BoolVarP(&rmOpts.prune, "prune", "P", false, "prune removes unused volumes on the host")
 
 	return rm
 }
