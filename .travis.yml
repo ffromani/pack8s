@@ -13,3 +13,23 @@ jobs:
   - stage: Build pack8s
     name: Build pack8s
     script: make
+
+  - stage: Build and Deploy
+    name: Build and Deploy to GitHub
+    if: tag IS present
+    before_script: skip
+    script: make release "VERSION=$TRAVIS_TAG"
+    deploy:
+      provider: releases
+      api_key: "$GITHUB_TOKEN"
+      skip_cleanup: true
+      overwrite: true
+      file_glob: true
+      file:
+      - _out/*
+      name: $TRAVIS_TAG
+      on:
+        tags: true
+        branch: master
+        repo: $TRAVIS_REPO_SLUG
+
