@@ -2,12 +2,31 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:37489162f3daefcea8fded094c94da3ebfbdc79c5cd40ea6e4b267ab7d35d01b"
+  name = "github.com/fromanirh/varlink-go"
+  packages = [
+    "varlink",
+    "varlink/internal/ctxio",
+  ]
+  pruneopts = "T"
+  revision = "a8e990bd4fe0719c3329e980c5d7a3e86a3e69e1"
+
+[[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   pruneopts = "T"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
   digest = "1:0d40f08f9f1d486f6c56a0cb0d50f28ee1d216497adb7ea060b6dfe9587a2a3d"
@@ -50,11 +69,11 @@
     "ssh/terminal",
   ]
   pruneopts = "T"
-  revision = "5c40567a22f8"
+  revision = "5c40567a22f818bd14a1ea7245dad9f8ef0691aa"
 
 [[projects]]
   branch = "master"
-  digest = "1:15766a9c65837e311fbdd31ffd6015bea084d44981d92e48fb783609d0060453"
+  digest = "1:60d5a54b4fee60b8cc47ed622a6b75bc811037ee89c264325e8319c2f1092fbc"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -62,12 +81,14 @@
     "windows",
   ]
   pruneopts = "T"
-  revision = "742c48ecaeb7c624c475e02f3eb0827ebb4970d4"
+  revision = "c1f44814a5cd81a6d1cb589ef1e528bc5d305e07"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/fromanirh/varlink-go/varlink",
+    "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/varlink/go/varlink",
