@@ -1,6 +1,6 @@
 all: build
 
-build: generate
+build:
 	./hack/build/build.sh
 
 deps:
