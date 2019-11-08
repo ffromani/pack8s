@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"k8s.io/client-go/tools/remotecommand"
+	// k8s.io/client-go/tools/remotecommand
 )
 
 // SocketDest is the "key" to where IO should go on the varlink
@@ -98,7 +98,7 @@ func (v VirtWriteCloser) Write(input []byte) (int, error) {
 }
 
 // Reader decodes the content that comes over the wire and directs it to the proper destination.
-func Reader(r *bufio.Reader, output, errput, input io.Writer, resize chan remotecommand.TerminalSize, execEcChan chan int) error {
+func Reader(r *bufio.Reader, output, errput, input io.Writer /*resize chan remotecommand.TerminalSize, */, execEcChan chan int) error {
 	var messageSize int64
 	headerBytes := make([]byte, 8)
 
@@ -147,12 +147,14 @@ func Reader(r *bufio.Reader, output, errput, input io.Writer, resize chan remote
 						return err
 					}
 				}
-				// Resize events come over in bytes, need to be reserialized
-				resizeEvent := remotecommand.TerminalSize{}
-				if err := json.Unmarshal(out, &resizeEvent); err != nil {
-					return err
-				}
-				resize <- resizeEvent
+				/*
+					// Resize events come over in bytes, need to be reserialized
+					resizeEvent := remotecommand.TerminalSize{}
+					if err := json.Unmarshal(out, &resizeEvent); err != nil {
+						return err
+					}
+					resize <- resizeEvent
+				*/
 			}
 		case Quit:
 			out := make([]byte, messageSize)
