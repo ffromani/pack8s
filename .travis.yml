@@ -1,5 +1,5 @@
 sudo: required
-dist: xenial
+dist: bionic
 language: go
 go: "1.12"
 
@@ -13,6 +13,10 @@ jobs:
   - stage: Build pack8s
     name: Build pack8s
     script: make
+
+  - stage: Unit tests
+    name: Unit tests
+    script: make tests
 
   - stage: Build and Deploy
     name: Build and Deploy to GitHub
@@ -33,3 +37,21 @@ jobs:
         branch: master
         repo: $TRAVIS_REPO_SLUG
 
+#set up podman, varlink, ginkgo
+before_install:
+  - sudo apt -y  install software-properties-common
+  - sudo add-apt-repository -y ppa:projectatomic/ppa
+  - sudo apt -y install podman libvarlink
+  - sudo groupadd podman
+  - echo "d /run/podman 0750 root podman" | sudo tee /etc/tmpfiles.d/podman.conf
+  - sudo cp travis_ci/io.podman.socket /etc/systemd/system/io.podman.socket
+  - sudo systemctl daemon-reload
+  - sudo rm -r /run/podman
+  - sudo systemd-tmpfiles --create
+  - sudo systemctl enable --now io.podman.socket
+  - sudo systemctl restart io.podman.socket
+  - sudo systemctl restart io.podman.service
+  - sudo usermod -G podman -a $USER
+  - sudo systemctl status io.podman.socket
+  - go get github.com/onsi/gomega
+  - go get github.com/onsi/ginkgo/ginkgo
