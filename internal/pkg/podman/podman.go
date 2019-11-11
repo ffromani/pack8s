@@ -285,6 +285,11 @@ func (hnd *Handle) PruneVolumes() error {
 	return err
 }
 
+//GetAllVolumes returns all volumes
+func (hnd *Handle) GetAllVolumes() ([]iopodman.Volume, error) {
+	return iopodman.GetVolumes().Call(hnd.ctx, hnd.conn, []string{}, true)
+}
+
 func (hnd *Handle) RemoveVolumes(volumes []iopodman.Volume) error {
 	volumeNames := []string{}
 	for _, vol := range volumes {
@@ -323,6 +328,11 @@ func (hnd *Handle) StartContainer(contID string) (string, error) {
 
 func (hnd *Handle) WaitContainer(name string, interval int64) (int64, error) {
 	return iopodman.WaitContainer().Call(hnd.ctx, hnd.conn, name, interval)
+}
+
+//ListImages returns all images on host
+func (hnd *Handle) ListImages() ([]iopodman.Image, error) {
+	return iopodman.ListImages().Call(hnd.ctx, hnd.conn)
 }
 
 func (hnd *Handle) PullImage(ref string) error {
