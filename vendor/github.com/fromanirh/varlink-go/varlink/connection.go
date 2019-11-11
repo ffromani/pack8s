@@ -1,7 +1,6 @@
 package varlink
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -75,6 +74,13 @@ func (e *Error) DispatchError() error {
 // Error returns the fully-qualified varlink error name.
 func (e *Error) Error() string {
 	return e.Name
+}
+
+// ReadWriterContext describes the capabilities of the
+// underlying varlink connection.
+type ReadWriterContext interface {
+	WriterContext
+	ReadBytes(ctx context.Context, delim byte) ([]byte, error)
 }
 
 // Connection is a connection from a client to a service.
@@ -175,10 +181,6 @@ func (c *Connection) Send(ctx context.Context, method string, parameters interfa
 	return receive, nil
 }
 
-func (c *Connection) GetReader() *bufio.Reader {
-	return c.conn.GetReader()
-}
-
 // Call sends a method call and returns the method reply.
 func (c *Connection) Call(ctx context.Context, method string, parameters interface{}, outParameters interface{}) error {
 	receive, err := c.Send(ctx, method, &parameters, 0)
@@ -241,6 +243,24 @@ func (c *Connection) GetInfo(ctx context.Context, vendor *string, product *strin
 	}
 
 	return nil
+}
+
+// Upgrade attempts to upgrade the connection using the provided method and parameters.
+// If successful, the connection cannot be reused later, and must be closed.
+func (c *Connection) Upgrade(ctx context.Context, method string, parameters interface{}) (func(context.Context, interface{}) (uint64, ReadWriterContext, error), error) {
+	reply, err := c.Send(ctx, method, parameters, Upgrade)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(ctx context.Context, out interface{}) (uint64, ReadWriterContext, error) {
+		flags, err := reply(ctx, out)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		return flags, c.conn, nil
+	}, nil
 }
 
 // Close terminates the connection.

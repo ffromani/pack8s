@@ -3,14 +3,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:37489162f3daefcea8fded094c94da3ebfbdc79c5cd40ea6e4b267ab7d35d01b"
+  digest = "1:a6ab1e023660417bc4aed4e14d29e68ec6428c1817c2d0402a9429e9e24df53c"
   name = "github.com/fromanirh/varlink-go"
   packages = [
     "varlink",
     "varlink/internal/ctxio",
   ]
   pruneopts = "T"
-  revision = "a8e990bd4fe0719c3329e980c5d7a3e86a3e69e1"
+  revision = "75953fb942bbcc9081333173b60b9e9e4dc83863"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
@@ -45,17 +45,6 @@
   version = "v1.0.5"
 
 [[projects]]
-  branch = "master"
-  digest = "1:187f1343e4ea5fb69112fde94424866eb4595cd27e84369ab52457a1d8a7395a"
-  name = "github.com/varlink/go"
-  packages = [
-    "varlink",
-    "varlink/internal/ctxio",
-  ]
-  pruneopts = "T"
-  revision = "4ecdbb8a36c22a58d1eff62e05bc0096ea104d0f"
-
-[[projects]]
   digest = "1:91ace4ffadb383ae72769300b47e5174f7a31f6f440f3ca1a2169956e56dc3d0"
   name = "golang.org/x/crypto"
   packages = [
@@ -73,7 +62,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:60d5a54b4fee60b8cc47ed622a6b75bc811037ee89c264325e8319c2f1092fbc"
+  digest = "1:579d1f8e37039c84d6bde0b8245f17ab38861cdc098462148d64f32cb707caf4"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -81,7 +70,7 @@
     "windows",
   ]
   pruneopts = "T"
-  revision = "c1f44814a5cd81a6d1cb589ef1e528bc5d305e07"
+  revision = "d32e6e3b99c40f2bfaea45ea9596ed539eed1c0d"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -91,7 +80,6 @@
     "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
-    "github.com/varlink/go/varlink",
     "golang.org/x/crypto/ssh",
     "golang.org/x/crypto/ssh/terminal",
   ]
