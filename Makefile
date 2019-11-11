@@ -18,6 +18,9 @@ clean:
 	rm -f varlink-go-interface-generator
 	rm -rf _out
 
+tests:
+	./hack/test/test.sh
+
 varlink-go-interface-generator:
 	cd vendor/github.com/fromanirh/varlink-go/cmd/varlink-go-interface-generator && go build -v .
 	cp vendor/github.com/fromanirh/varlink-go/cmd/varlink-go-interface-generator/varlink-go-interface-generator .
@@ -28,4 +31,4 @@ release: build
 	mkdir -p _out
 	cp pack8s _out/pack8s-${VERSION}-linux-amd64
 
-.PHONY: all build deps fmt clean prep
+.PHONY: all build deps fmt clean prep tests
