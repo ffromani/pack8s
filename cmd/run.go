@@ -387,14 +387,12 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if runOpts.enableCeph {
-		// XXX begin
 		keyRing := new(bytes.Buffer)
 		err := hnd.Exec(nodeContainer(prefix, "ceph"), []string{
 			"/bin/bash",
 			"-c",
 			"ceph auth print-key connent.admin | base64",
 		}, keyRing)
-		// XXX end
 		if err != nil {
 			return err
 		}

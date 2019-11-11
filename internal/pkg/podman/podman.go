@@ -210,7 +210,7 @@ func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
 	errChan := make(chan error, 1)
 	go func() {
 		// Read from the wire and direct to stdout or stderr
-		err := virtwriter.Reader(rd, os.Stdout, os.Stderr, nil, ecChan)
+		err := virtwriter.Reader(rd, out, os.Stderr, nil, ecChan)
 		errChan <- err
 	}()
 
