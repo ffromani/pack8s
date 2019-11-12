@@ -10,12 +10,10 @@ branches:
 
 jobs:
   include:
-  - stage: Build pack8s
+  - stage: Tests
     name: Build pack8s
     script: make
-
-  - stage: Unit tests
-    name: Unit tests
+  - name: Unit tests
     script: make tests
 
   - stage: Build and Deploy
