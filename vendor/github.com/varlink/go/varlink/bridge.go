@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/fromanirh/varlink-go/varlink/internal/ctxio"
+	"github.com/varlink/go/varlink/internal/ctxio"
 )
 
 type PipeCon struct {

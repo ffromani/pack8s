@@ -8,7 +8,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/fromanirh/varlink-go/varlink/internal/ctxio"
+	"github.com/varlink/go/varlink/internal/ctxio"
 )
 
 // Message flags for Send(). More indicates that the client accepts more than one method
@@ -79,7 +79,8 @@ func (e *Error) Error() string {
 // ReadWriterContext describes the capabilities of the
 // underlying varlink connection.
 type ReadWriterContext interface {
-	WriterContext
+	Write(context.Context, []byte) (int, error)
+	Read(context.Context, []byte) (int, error)
 	ReadBytes(ctx context.Context, delim byte) ([]byte, error)
 }
 

@@ -98,7 +98,7 @@ func (v VirtWriteCloser) Write(input []byte) (int, error) {
 }
 
 // Reader decodes the content that comes over the wire and directs it to the proper destination.
-func Reader(r *bufio.Reader, output, errput, input io.Writer /*resize chan remotecommand.TerminalSize, */, execEcChan chan int) error {
+func Reader(r io.Reader, output, errput, input io.Writer /*resize chan remotecommand.TerminalSize, */, execEcChan chan int) error {
 	var messageSize int64
 	headerBytes := make([]byte, 8)
 
