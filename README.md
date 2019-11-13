@@ -21,6 +21,9 @@ make
 
 Or fetch one of the releases.
 
+## what works?
+See `STATUS.md`
+
 ## how to try it out?
 1. make sure your `kubevirtci` checkout includes [this PR](https://github.com/kubevirt/kubevirtci/pull/168).
 2. build (see above) `pack8s` and put it anywhere on your PATH.
