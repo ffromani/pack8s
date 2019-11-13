@@ -129,10 +129,15 @@ func (hnd *Handle) disconnect() error {
 }
 
 func (hnd *Handle) Terminal(container string, args []string, file *os.File) error {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return err
+	}
+
 	detachKeys := ""
 	start := false
 
-	err := iopodman.Attach().Call(hnd.ctx, hnd.conn, container, detachKeys, start)
+	err = iopodman.Attach().Call(hnd.ctx, hnd.conn, container, detachKeys, start)
 	if err != nil {
 		return err
 	}
@@ -227,6 +232,11 @@ func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
 }
 
 func (hnd *Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return nil, err
+	}
+
 	ret := []iopodman.Container{}
 	containers, err := iopodman.ListContainers().Call(hnd.ctx, hnd.conn)
 	if err != nil {
@@ -246,6 +256,11 @@ func (hnd *Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, e
 }
 
 func (hnd *Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return nil, err
+	}
+
 	ret := []iopodman.Volume{}
 	args := []string{}
 	all := true
@@ -266,9 +281,14 @@ func (hnd *Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) 
 }
 
 func (hnd *Handle) FindPrefixedContainer(prefixedName string) (iopodman.Container, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return iopodman.Container{}, err
+	}
+
 	containers := []iopodman.Container{}
 
-	containers, err := hnd.GetPrefixedContainers(prefixedName)
+	containers, err = hnd.GetPrefixedContainers(prefixedName)
 	if err != nil {
 		return iopodman.Container{}, err
 	}
@@ -281,22 +301,37 @@ func (hnd *Handle) FindPrefixedContainer(prefixedName string) (iopodman.Containe
 
 //PruneVolumes removes all unused volumes on the host.
 func (hnd *Handle) PruneVolumes() error {
-	_, _, err := iopodman.VolumesPrune().Call(hnd.ctx, hnd.conn)
+	_, err := hnd.reconnect()
+	if err != nil {
+		return err
+	}
+
+	_, _, err = iopodman.VolumesPrune().Call(hnd.ctx, hnd.conn)
 	return err
 }
 
 //GetAllVolumes returns all volumes
 func (hnd *Handle) GetAllVolumes() ([]iopodman.Volume, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return nil, err
+	}
+
 	return iopodman.GetVolumes().Call(hnd.ctx, hnd.conn, []string{}, true)
 }
 
 func (hnd *Handle) RemoveVolumes(volumes []iopodman.Volume) error {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return err
+	}
+
 	volumeNames := []string{}
 	for _, vol := range volumes {
 		log.Printf("removing volume %s @%s", vol.Name, vol.MountPoint)
 		volumeNames = append(volumeNames, vol.Name)
 	}
-	_, _, err := iopodman.VolumeRemove().Call(hnd.ctx, hnd.conn, iopodman.VolumeRemoveOpts{
+	_, _, err = iopodman.VolumeRemove().Call(hnd.ctx, hnd.conn, iopodman.VolumeRemoveOpts{
 		Volumes: volumeNames,
 		Force:   true,
 	})
@@ -304,38 +339,78 @@ func (hnd *Handle) RemoveVolumes(volumes []iopodman.Volume) error {
 }
 
 func (hnd *Handle) RemoveContainer(cont iopodman.Container, force, removeVolumes bool) (string, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return "", err
+	}
+
 	log.Printf("trying to remove: %s (%s) force=%v removeVolumes=%v\n", cont.Names, cont.Id, force, removeVolumes)
 	return iopodman.RemoveContainer().Call(hnd.ctx, hnd.conn, cont.Id, force, removeVolumes)
 }
 
 func (hnd *Handle) CreateNamedVolume(name string) (string, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return "", err
+	}
+
 	return iopodman.VolumeCreate().Call(hnd.ctx, hnd.conn, iopodman.VolumeCreateOpts{
 		VolumeName: name,
 	})
 }
 
 func (hnd *Handle) CreateContainer(conf iopodman.Create) (string, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return "", err
+	}
+
 	return iopodman.CreateContainer().Call(hnd.ctx, hnd.conn, conf)
 }
 
 func (hnd *Handle) StopContainer(name string, timeout int64) (string, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return "", err
+	}
+
 	return iopodman.StopContainer().Call(hnd.ctx, hnd.conn, name, timeout)
 }
 
 func (hnd *Handle) StartContainer(contID string) (string, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return "", err
+	}
+
 	return iopodman.StartContainer().Call(hnd.ctx, hnd.conn, contID)
 }
 
 func (hnd *Handle) WaitContainer(name string, interval int64) (int64, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return 0, err
+	}
+
 	return iopodman.WaitContainer().Call(hnd.ctx, hnd.conn, name, interval)
 }
 
 //ListImages returns all images on host
 func (hnd *Handle) ListImages() ([]iopodman.Image, error) {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return nil, err
+	}
+
 	return iopodman.ListImages().Call(hnd.ctx, hnd.conn)
 }
 
 func (hnd *Handle) PullImage(ref string) error {
+	_, err := hnd.reconnect()
+	if err != nil {
+		return err
+	}
+
 	tries := []int{0, 1, 2, 6}
 	interval := 3 * time.Second
 	ticker := time.NewTicker(interval)
