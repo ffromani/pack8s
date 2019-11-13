@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/fromanirh/varlink-go/varlink"
+	"github.com/varlink/go/varlink"
 
 	"github.com/fromanirh/pack8s/pkg/varlinkapi/virtwriter"
 
@@ -191,6 +191,19 @@ func (hnd *Handle) Terminal(container string, args []string, file *os.File) erro
 	return <-errChan
 }
 
+type ReaderContext interface {
+	Read(context.Context, []byte) (int, error)
+}
+
+type readerCtx struct {
+	ReaderContext
+	ctx context.Context
+}
+
+func (r readerCtx) Read(in []byte) (int, error) {
+	return r.ReaderContext.Read(r.ctx, in)
+}
+
 func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
 	log.Printf("exec start")
 	_, err := hnd.reconnect()
@@ -199,7 +212,7 @@ func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
 	}
 	defer hnd.disconnect()
 
-	rd, err := ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
+	rwc, err := ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
 		Name:       container,
 		Tty:        true,
 		Privileged: true,
@@ -211,11 +224,16 @@ func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
 		return err
 	}
 
+	rd := readerCtx{
+		ReaderContext: rwc,
+		ctx:           context.TODO(),
+	}
+
 	ecChan := make(chan int, 1)
 	errChan := make(chan error, 1)
 	go func() {
 		// Read from the wire and direct to stdout or stderr
-		err := virtwriter.Reader(rd, os.Stdout, os.Stderr, nil, ecChan)
+		err := virtwriter.Reader(rd, out, os.Stderr, nil, ecChan)
 		errChan <- err
 	}()
 
