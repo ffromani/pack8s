@@ -2,6 +2,7 @@ package ports
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/spf13/pflag"
@@ -131,6 +132,7 @@ func GetPublicPort(port int, containerPorts []iopodman.ContainerPortMappings) (i
 	portStr := fmt.Sprintf("%d", port)
 	for _, p := range containerPorts {
 		if p.Container_port == portStr {
+			log.Printf("port: %s -> %s", portStr, p.Host_port)
 			return strconv.Atoi(p.Host_port)
 		}
 	}

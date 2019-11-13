@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -110,7 +111,9 @@ func scp(cmd *cobra.Command, args []string) error {
 		HostKeyCallback: ssh1.InsecureIgnoreHostKey(),
 	}
 
-	connection, err := ssh1.Dial("tcp", fmt.Sprintf("127.0.0.1:%v", sshPort), config)
+	sshAddr := fmt.Sprintf("127.0.0.1:%v", sshPort)
+	log.Printf("connecting: SCP to %s", sshAddr)
+	connection, err := ssh1.Dial("tcp", sshAddr, config)
 	if err != nil {
 		return err
 	}
@@ -141,6 +144,9 @@ func scp(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	log.Printf("SCP session ready")
+	defer log.Printf("SCP session done")
 
 	errChan := make(chan error)
 
