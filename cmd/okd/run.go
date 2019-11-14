@@ -25,6 +25,7 @@ type okdRunOptions struct {
 	workers        string
 	workersMemory  string
 	workersCpu     string
+	secondaryNics  uint
 	registryVolume string
 	nfsData        string
 	registryPort   uint
@@ -53,6 +54,7 @@ func NewRunCommand() *cobra.Command {
 	run.Flags().StringVar(&okdRunOpts.workers, "workers", "1", "number of cluster worker nodes to start")
 	run.Flags().StringVar(&okdRunOpts.workersMemory, "workers-memory", "6144", "amount of RAM in MB per worker")
 	run.Flags().StringVar(&okdRunOpts.workersCpu, "workers-cpu", "2", "number of CPU per worker")
+	run.Flags().UintVar(&okdRunOpts.secondaryNics, "secondary-nics", 0, "number of secondary nics to add")
 	run.Flags().StringVar(&okdRunOpts.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
 	run.Flags().StringVar(&okdRunOpts.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
 	run.Flags().UintVar(&okdRunOpts.registryPort, "registry-port", 0, "port on localhost for the docker registry")
@@ -83,6 +85,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	envs = append(envs, fmt.Sprintf("MASTER_CPU=%s", okdRunOpts.masterCpu))
 	envs = append(envs, fmt.Sprintf("WORKERS_MEMORY=%s", okdRunOpts.workersMemory))
 	envs = append(envs, fmt.Sprintf("WORKERS_CPU=%s", okdRunOpts.workersCpu))
+	envs = append(envs, fmt.Sprintf("NUM_SECONDARY_NICS=%d", okdRunOpts.secondaryNics))
 
 	portMap, err := ports.NewMappingFromFlags(cmd.Flags(), []ports.PortInfo{
 		ports.PortInfo{
