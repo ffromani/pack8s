@@ -9,6 +9,12 @@ import (
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
+type showOptions struct {
+	containerIdsOnly bool
+}
+
+var showOpts showOptions
+
 func NewShowCommand() *cobra.Command {
 	show := &cobra.Command{
 		Use:   "show",
@@ -16,6 +22,9 @@ func NewShowCommand() *cobra.Command {
 		RunE:  showContainers,
 		Args:  cobra.NoArgs,
 	}
+
+	show.Flags().BoolVarP(&showOpts.containerIdsOnly, "ids", "i", false, "show only container ids")
+
 	return show
 }
 
@@ -42,13 +51,20 @@ func showContainers(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(containers) >= 1 {
-		fmt.Printf("# Container:\n")
+	if showOpts.containerIdsOnly {
 		for _, cont := range containers {
-			fmt.Printf("%-32s\t%s\n", cont.Names, cont.Id)
+			fmt.Printf("%s\n", cont.Id)
 		}
+		return nil
 	} else {
-		fmt.Printf("no containers found for cluster %s\n", prefix)
+		if len(containers) >= 1 {
+			fmt.Printf("# Container:\n")
+			for _, cont := range containers {
+				fmt.Printf("%-32s\t%s\n", cont.Names, cont.Id)
+			}
+		} else {
+			fmt.Printf("no containers found for cluster %s\n", prefix)
+		}
 	}
 
 	volumes, err := hnd.GetPrefixedVolumes(prefix)

@@ -261,7 +261,7 @@ func (hnd *Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, e
 		return ret, err
 	}
 
-	log.Printf("found %d containers in the system", len(containers))
+	log.Printf("found %d containers in the system - prefix=[%s]", len(containers), prefix)
 	for _, cont := range containers {
 		// TODO: why is it Name*s*? there is a bug lurking here? docs are unclear.
 		if strings.HasPrefix(cont.Names, prefix) {
