@@ -35,6 +35,7 @@ type okdRunOptions struct {
 	sshWorkerPort  uint
 	background     bool
 	randomPorts    bool
+	volume         string
 }
 
 var okdRunOpts okdRunOptions
@@ -64,6 +65,7 @@ func NewRunCommand() *cobra.Command {
 	run.Flags().UintVar(&okdRunOpts.sshWorkerPort, "ssh-worker-port", 0, "port on localhost to ssh to worker node")
 	run.Flags().BoolVar(&okdRunOpts.background, "background", false, "go to background after nodes are up")
 	run.Flags().BoolVar(&okdRunOpts.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
+	run.Flags().StringVar(&okdRunOpts.volume, "volume", "", "Bind mount a volume into the container")
 	return run
 }
 
@@ -157,6 +159,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		Privileged: &okdRunOpts.privileged,
 		Publish:    &clusterPorts,
 		PublishAll: &okdRunOpts.randomPorts,
+		Volume:     &[]string{okdRunOpts.volume},
 	})
 	if err != nil {
 		return err
