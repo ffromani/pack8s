@@ -11,6 +11,12 @@ import (
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
+type sshOptions struct {
+	useExec bool
+}
+
+var sshOpts sshOptions
+
 // NewSSHCommand returns command to SSH to the cluster node
 func NewSSHCommand() *cobra.Command {
 
@@ -20,6 +26,8 @@ func NewSSHCommand() *cobra.Command {
 		RunE:  ssh,
 		Args:  cobra.MinimumNArgs(1),
 	}
+
+	ssh.Flags().BoolVar(&sshOpts.useExec, "use-exec", false, "use exec connection")
 	return ssh
 }
 
@@ -44,7 +52,7 @@ func ssh(cmd *cobra.Command, args []string) error {
 	container := prefix + "-" + node
 	sshCommand := append([]string{"ssh.sh"}, args[1:]...)
 
-	if terminal.IsTerminal(int(os.Stdout.Fd())) {
+	if terminal.IsTerminal(int(os.Stdout.Fd())) && !sshOpts.useExec {
 		err = hnd.Terminal(container, sshCommand, os.Stdout)
 	} else {
 		err = hnd.Exec(container, sshCommand, os.Stdout)
