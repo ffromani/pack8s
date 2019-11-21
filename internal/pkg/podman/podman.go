@@ -7,11 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
-
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/varlink/go/varlink"
 
@@ -126,69 +123,6 @@ func (hnd *Handle) disconnect() error {
 		log.Printf("disconnected from %s (err=%v)", hnd.socket, err)
 	}
 	return err
-}
-
-func (hnd *Handle) Terminal(container string, args []string, file *os.File) error {
-	_, err := hnd.reconnect()
-	if err != nil {
-		return err
-	}
-
-	detachKeys := ""
-	start := false
-
-	err = iopodman.Attach().Call(hnd.ctx, hnd.conn, container, detachKeys, start)
-	if err != nil {
-		return err
-	}
-
-	socks, err := iopodman.GetAttachSockets().Call(hnd.ctx, hnd.conn, container)
-	if err != nil {
-		return err
-	}
-
-	attached, err := os.OpenFile(socks.Io_socket, os.O_RDWR, 0644)
-	if err != nil {
-		return err
-	}
-	defer attached.Close()
-
-	state, err := terminal.MakeRaw(int(file.Fd()))
-	if err != nil {
-		return err
-	}
-	defer terminal.Restore(int(file.Fd()), state)
-
-	errChan := make(chan error)
-
-	go func() {
-		interrupt := make(chan os.Signal, 1)
-		signal.Notify(interrupt, os.Interrupt)
-		<-interrupt
-		close(errChan)
-	}()
-
-	go func() {
-		_, err := io.Copy(file, attached)
-		errChan <- err
-	}()
-
-	go func() {
-		_, err := io.Copy(attached, file)
-		errChan <- err
-	}()
-
-	go func() {
-		err := iopodman.ExecContainer().Call(hnd.ctx, hnd.conn, iopodman.ExecOpts{
-			Name:       container,
-			Tty:        terminal.IsTerminal(int(file.Fd())),
-			Privileged: true,
-			Cmd:        args,
-		})
-		errChan <- err
-	}()
-
-	return <-errChan
 }
 
 type ReaderContext interface {
