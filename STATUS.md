@@ -8,6 +8,7 @@ kubevirtci `56f69bb5867db7517f70a0787b32570a861e124a`
 | ----------------- | ------------- | ------------- | ------------------ |
 | k8s-1.14.6        | Yes           | Planned       |                    |
 | k8s-1.15.1        | In progress   | Planned       |                    |
+| k8s-1.16.2        | Yes           | Planned       |                    |
 | k8s-genie-1.11.1  | Not yet       | N/A           |                    |
 | k8s-multus-1.13.3 | Not yet       | N/A           |                    |
 | okd-4.1           | Yes           | N/A           |                    |
