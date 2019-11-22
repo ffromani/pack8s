@@ -231,11 +231,6 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		err = hnd.PullImage(images.NFSGaneshaImage)
-		if err != nil {
-			return err
-		}
-
 		nfsName := fmt.Sprintf("%s-nfs", prefix)
 		nfsMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/data/nfs", nfsData)}
 		nfsLabels := []string{fmt.Sprintf("%s=010", podman.LabelGeneration)}
@@ -244,8 +239,8 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Name:       &nfsName,
 			Label:      &nfsLabels,
 			Mount:      &nfsMounts,
-			Privileged: &runOpts.privileged,
 			Network:    &dnsmasqNetwork,
+			Privileged: &runOpts.privileged,
 		})
 		if err != nil {
 			return err
@@ -253,11 +248,6 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if runOpts.enableCeph {
-		err = hnd.PullImage(images.CephImage)
-		if err != nil {
-			return err
-		}
-
 		cephName := fmt.Sprintf("%s-ceph", prefix)
 		cephLabels := []string{fmt.Sprintf("%s=011", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
@@ -286,11 +276,6 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 		if _, err = os.Stat(logDir); os.IsNotExist(err) {
 			os.Mkdir(logDir, 0755)
-		}
-
-		err = hnd.PullImage(images.FluentdImage)
-		if err != nil {
-			return err
 		}
 
 		fluentdMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/fluentd/log/collected", logDir)}

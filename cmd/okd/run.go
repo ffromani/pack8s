@@ -183,12 +183,6 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	clusterNetwork := fmt.Sprintf("container:%s", clusterID)
 
-	// Pull the registry image
-	err = hnd.PullImage(images.DockerRegistryImage)
-	if err != nil {
-		return err
-	}
-
 	// TODO: how to use the user-supplied name?
 	var registryMounts mounts.MountMapping
 	if okdRunOpts.registryVolume != "" {
@@ -221,11 +215,6 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	if okdRunOpts.nfsData != "" {
 		nfsData, err := filepath.Abs(okdRunOpts.nfsData)
-		if err != nil {
-			return err
-		}
-
-		err = hnd.PullImage(images.NFSGaneshaImage)
 		if err != nil {
 			return err
 		}
