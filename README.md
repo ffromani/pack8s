@@ -19,15 +19,18 @@ just run
 make
 ```
 
-Or fetch one of the releases.
+Or fetch one of the [releases](https://github.com/fromanirh/pack8s/releases).
 
 ## what works?
 See `STATUS.md`
 
 ## how to try it out?
-1. make sure your `kubevirtci` checkout includes [this PR](https://github.com/kubevirt/kubevirtci/pull/168).
-2. build (see above) `pack8s` and put it anywhere on your PATH.
-3. set up your box as [described in this blog post](https://podman.io/blogs/2019/01/16/podman-varlink.html) or see `local box setup` below.
+1. build (see above) `pack8s` and put it anywhere on your PATH.
+2. set up your box as [described in this blog post](https://podman.io/blogs/2019/01/16/podman-varlink.html) or see `local box setup` below.
+3. tell `kubevirtci` to actually use `pack8s`:
+```bash
+export KUBEVIRTCI_RUNTIME=podman
+```
 4. use kubevirtci as usual (`make cluster-up`, `make cluster-down`...).
 
 ## local box setup
