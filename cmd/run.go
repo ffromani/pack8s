@@ -13,8 +13,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fromanirh/pack8s/cmd/cmdutil"
-
 	"github.com/fromanirh/pack8s/iopodman"
 
 	"github.com/fromanirh/pack8s/internal/pkg/images"
@@ -22,6 +20,8 @@ import (
 	"github.com/fromanirh/pack8s/internal/pkg/mounts"
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/internal/pkg/ports"
+
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
 
 	"github.com/fromanirh/pack8s/cmd/okd"
 )
@@ -194,33 +194,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	dnsmasqNetwork := fmt.Sprintf("container:%s", dnsmasqID)
 
-	// TODO: how to use the user-supplied name?
-	var registryMounts mounts.MountMapping
-	if runOpts.registryVolume != "" {
-		registryMounts, err = mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
-			mounts.MountInfo{
-				Name: fmt.Sprintf("%s-registry", cOpts.Prefix),
-				Path: "/var/lib/registry",
-				Type: "volume",
-			},
-		})
-		if err != nil {
-			log.Errorf("registry volume mapping failed: %v", err)
-			return err
-		}
-	}
-
-	registryName := fmt.Sprintf("%s-registry", cOpts.Prefix)
-	registryMountsStrings := registryMounts.ToStrings()
-	registryLabels := []string{fmt.Sprintf("%s=0001", podman.LabelGeneration)}
-	_, err = ldgr.RunContainer(iopodman.Create{
-		Args:       []string{images.DockerRegistryImage},
-		Name:       &registryName,
-		Label:      &registryLabels,
-		Mount:      &registryMountsStrings,
-		Privileged: &runOpts.privileged,
-		Network:    &dnsmasqNetwork,
-	})
+	err = cmdutil.SetupRegistry(ldgr, cOpts.Prefix, dnsmasqNetwork, runOpts.registryVolume, runOpts.privileged)
 	if err != nil {
 		log.Errorf("Registry run failed: %v", err)
 		return err
@@ -228,22 +202,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	log.Noticef("Registry container ready")
 
 	if runOpts.nfsData != "" {
-		nfsData, err := filepath.Abs(runOpts.nfsData)
-		if err != nil {
-			return err
-		}
-
-		nfsName := fmt.Sprintf("%s-nfs", cOpts.Prefix)
-		nfsMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/data/nfs", nfsData)}
-		nfsLabels := []string{fmt.Sprintf("%s=010", podman.LabelGeneration)}
-		_, err = ldgr.RunContainer(iopodman.Create{
-			Args:       []string{images.NFSGaneshaImage},
-			Name:       &nfsName,
-			Label:      &nfsLabels,
-			Mount:      &nfsMounts,
-			Network:    &dnsmasqNetwork,
-			Privileged: &runOpts.privileged,
-		})
+		err = cmdutil.SetupNFS(ldgr, cOpts.Prefix, dnsmasqNetwork, runOpts.nfsData, runOpts.privileged)
 		if err != nil {
 			log.Errorf("NFS run failed: %v", err)
 			return err
