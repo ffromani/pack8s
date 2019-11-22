@@ -12,6 +12,7 @@ import (
 
 	"github.com/varlink/go/varlink"
 
+	"github.com/fromanirh/pack8s/internal/pkg/images"
 	"github.com/fromanirh/pack8s/pkg/varlinkapi/virtwriter"
 
 	"github.com/fromanirh/pack8s/iopodman"
@@ -363,6 +364,8 @@ func (hnd *Handle) PullImage(ref string) error {
 		return err
 	}
 
+	log.Printf("pulling image: %s", ref)
+
 	tries := []int{0, 1, 2, 6}
 	interval := 3 * time.Second
 	ticker := time.NewTicker(interval)
@@ -379,6 +382,37 @@ func (hnd *Handle) PullImage(ref string) error {
 		}
 	}
 	return fmt.Errorf("failed to download %s %d times, giving up.", ref, len(tries))
+}
+
+func (hnd *Handle) PullClusterImages(reqs images.Requests, clusterImage string) error {
+	var err error
+	err = hnd.PullImage(clusterImage)
+	if err != nil {
+		return err
+	}
+	err = hnd.PullImage(images.DockerRegistryImage)
+	if err != nil {
+		return err
+	}
+	if reqs.WantsNFS() {
+		err = hnd.PullImage(images.NFSGaneshaImage)
+		if err != nil {
+			return err
+		}
+	}
+	if reqs.WantsCeph() {
+		err = hnd.PullImage(images.CephImage)
+		if err != nil {
+			return err
+		}
+	}
+	if reqs.WantsFluentd() {
+		err = hnd.PullImage(images.FluentdImage)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (hnd *Handle) pullImage(ticker *time.Ticker, prefix, ref string) error {

@@ -2,12 +2,29 @@ package cmd
 
 import (
 	"context"
-	"log"
 
 	"github.com/spf13/cobra"
 
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
+
+type pullOptions struct {
+	auxImages bool
+}
+
+func (po pullOptions) WantsNFS() bool {
+	return po.auxImages
+}
+
+func (po pullOptions) WantsCeph() bool {
+	return po.auxImages
+}
+
+func (po pullOptions) WantsFluentd() bool {
+	return po.auxImages
+}
+
+var pullOpts pullOptions
 
 func NewPullCommand() *cobra.Command {
 	show := &cobra.Command{
@@ -16,6 +33,7 @@ func NewPullCommand() *cobra.Command {
 		RunE:  pullImage,
 		Args:  cobra.ExactArgs(1),
 	}
+	show.Flags().BoolVarP(&pullOpts.auxImages, "aux-images", "a", false, "pull the cluster auxiliary images")
 	return show
 }
 
@@ -32,6 +50,10 @@ func pullImage(cmd *cobra.Command, args []string) error {
 	}
 
 	ref := args[0]
-	log.Printf("pulling image: %s", ref)
+	if pullOpts.auxImages {
+		// if we always do PullClusterImages, we bring the docker registry, which is something
+		// we may actually don't want to do here (wasted work)
+		return hnd.PullClusterImages(pullOpts, ref)
+	}
 	return hnd.PullImage(ref)
 }

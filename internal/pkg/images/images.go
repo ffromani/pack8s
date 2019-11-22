@@ -10,3 +10,9 @@ const (
 	// FluentdImage contains the reference to fluentd docker image
 	FluentdImage = "docker.io/fluent/fluentd:v1.2-debian"
 )
+
+type Requests interface {
+	WantsNFS() bool
+	WantsCeph() bool
+	WantsFluentd() bool
+}

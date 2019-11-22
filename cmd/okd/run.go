@@ -3,6 +3,7 @@ package okd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -36,6 +37,19 @@ type okdRunOptions struct {
 	background     bool
 	randomPorts    bool
 	volume         string
+	downloadOnly   bool
+}
+
+func (ro okdRunOptions) WantsNFS() bool {
+	return ro.nfsData != ""
+}
+
+func (ro okdRunOptions) WantsCeph() bool {
+	return false
+}
+
+func (ro okdRunOptions) WantsFluentd() bool {
+	return false
 }
 
 var okdRunOpts okdRunOptions
@@ -124,6 +138,13 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
+	log.Printf("downloading all the images needed for %s", cluster)
+	err = hnd.PullClusterImages(okdRunOpts, "docker.io/"+cluster)
+	if err != nil || okdRunOpts.downloadOnly {
+		return err
+	}
+	log.Printf("downloaded all the images needed for %s, bringing cluster up", cluster)
+
 	ldgr := ledger.NewLedger(hnd, cmd.OutOrStderr())
 
 	defer func() {
@@ -137,11 +158,6 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		cancel()
 		ldgr.Done <- fmt.Errorf("Interrupt received, clean up")
 	}()
-	// Pull the cluster image
-	err = hnd.PullImage("docker.io/" + cluster)
-	if err != nil {
-		return err
-	}
 
 	clusterContainerName := prefix + "-cluster"
 	clusterExpose := ports.ToStrings(
