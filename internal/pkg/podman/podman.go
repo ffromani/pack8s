@@ -96,7 +96,6 @@ func NewHandle(ctx context.Context, socket string) (*Handle, error) {
 	if socket == "" {
 		socket = DefaultSocket
 	}
-	log.Printf("connecting to %s", socket)
 	conn, err := varlink.NewConnection(ctx, socket)
 	log.Printf("connected to %s", socket)
 	return &Handle{
@@ -140,7 +139,6 @@ func (r readerCtx) Read(in []byte) (int, error) {
 }
 
 func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
-	log.Printf("exec start")
 	_, err := hnd.reconnect()
 	if err != nil {
 		return err
@@ -153,7 +151,6 @@ func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
 		Privileged: true,
 		Cmd:        args,
 	})
-	log.Printf("exec call done")
 
 	if err != nil {
 		return err
@@ -177,7 +174,6 @@ func (hnd *Handle) Exec(container string, args []string, out io.Writer) error {
 		return err
 	}
 	rc := <-ecChan
-	log.Printf("exec done -> %d", rc)
 	if rc != 0 {
 		return fmt.Errorf("exec failed: rc=%d", rc)
 	}
@@ -204,7 +200,6 @@ func (hnd *Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, e
 			ret = append(ret, cont)
 		}
 	}
-	log.Printf("found %d containers matching the prefix", len(ret))
 	return ret, nil
 }
 
@@ -229,7 +224,6 @@ func (hnd *Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) 
 			ret = append(ret, vol)
 		}
 	}
-	log.Printf("found %d volumes matching the prefix", len(ret))
 	return ret, err
 }
 
