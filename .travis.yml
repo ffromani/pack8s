@@ -39,7 +39,7 @@ jobs:
 before_install:
   - sudo apt -y  install software-properties-common
   - sudo add-apt-repository -y ppa:projectatomic/ppa
-  - sudo apt -y install podman libvarlink
+  - sudo apt -y install podman libvarlink containernetworking-plugins
   - sudo groupadd podman
   - echo "d /run/podman 0750 root podman" | sudo tee /etc/tmpfiles.d/podman.conf
   - sudo cp travis_ci/io.podman.socket /etc/systemd/system/io.podman.socket
