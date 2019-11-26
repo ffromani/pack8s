@@ -29,7 +29,7 @@ var _ = Describe("podman", func() {
 		})
 	})
 
-	Context("create volume", func() {
+	Context("volumes", func() {
 		It("Should create volume", func() {
 			ctx := context.Background()
 
@@ -59,9 +59,7 @@ var _ = Describe("podman", func() {
 			err = handler.RemoveVolumes(volumesToRemove)
 			Expect(err).To(BeNil())
 		})
-	})
 
-	Context("find prefixed volumes", func() {
 		It("Should get prefixed volume", func() {
 			ctx := context.Background()
 
@@ -94,9 +92,7 @@ var _ = Describe("podman", func() {
 			err = handler.RemoveVolumes(volumesToRemove)
 			Expect(err).To(BeNil())
 		})
-	})
 
-	Context("remove volumes", func() {
 		It("Should remove volume", func() {
 			ctx := context.Background()
 
@@ -144,7 +140,7 @@ var _ = Describe("podman", func() {
 		})
 	})
 
-	Context("create container", func() {
+	Context("containers", func() {
 		It("Should create container", func() {
 			ctx := context.Background()
 
@@ -165,9 +161,61 @@ var _ = Describe("podman", func() {
 			_, err = handler.RemoveContainer(iopodman.Container{Id: id}, true, true)
 			Expect(err).To(BeNil())
 		})
-	})
 
-	Context("find container", func() {
+		It("Should start container", func() {
+			ctx := context.Background()
+
+			handler, err := podman.NewHandle(ctx, "")
+			Expect(err).To(BeNil())
+
+			name := "pack8s-test"
+			id, err := handler.CreateContainer(iopodman.Create{
+				Args: []string{images.DockerRegistryImage},
+				Name: &name,
+			})
+			Expect(err).To(BeNil())
+
+			_, err = handler.StartContainer(id)
+			Expect(err).To(BeNil())
+
+			container, err := handler.FindPrefixedContainer(name)
+			Expect(err).To(BeNil())
+			Expect(container.Status).To(Equal("running"))
+
+			_, err = handler.StopContainer(id, 10)
+			Expect(err).To(BeNil())
+
+			_, err = handler.RemoveContainer(iopodman.Container{Id: id}, true, true)
+			Expect(err).To(BeNil())
+		})
+
+		It("Should stop container", func() {
+			ctx := context.Background()
+
+			handler, err := podman.NewHandle(ctx, "")
+			Expect(err).To(BeNil())
+
+			name := "pack8s-test"
+			id, err := handler.CreateContainer(iopodman.Create{
+				Args: []string{images.DockerRegistryImage},
+				Name: &name,
+			})
+			Expect(err).To(BeNil())
+
+			_, err = handler.StartContainer(id)
+			Expect(err).To(BeNil())
+
+			_, err = handler.StopContainer(id, 10)
+			Expect(err).To(BeNil())
+
+			container, err := handler.FindPrefixedContainer(name)
+			Expect(err).To(BeNil())
+			Expect(container.Status).To(Equal("exited"))
+
+			_, err = handler.RemoveContainer(iopodman.Container{Id: id}, true, true)
+			Expect(err).To(BeNil())
+		})
+
 		It("Should find 1 container", func() {
 			ctx := context.Background()
 
@@ -226,9 +274,7 @@ var _ = Describe("podman", func() {
 			_, err = handler.RemoveContainer(iopodman.Container{Id: id2}, true, true)
 			Expect(err).To(BeNil())
 		})
-	})
 
-	Context("remove container", func() {
 		It("Should remove container", func() {
 			ctx := context.Background()
 
