@@ -17,7 +17,7 @@ _ATTEMPT_DELAY = 10  # seconds
 # rest client package.
 class OC:
     def __init__(self, kubeconfig):
-        self._kubeconfig = kubeconfig.strip()
+        self._kubeconfig = kubeconfig
         self._env = {
             'PATH': os.environ['PATH'],
             'KUBECONFIG': self._kubeconfig,
@@ -139,7 +139,9 @@ class Cluster:
             text=True,
             env=self._env,
         )
-        return res.stdout
+        # we don't want the trailing '\n' to end up into commandline
+        # or env vars - that will lead to subtle bugs (learned the hard way)
+        return res.stdout.strip()
 
     # helpers
 
