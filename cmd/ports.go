@@ -6,6 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
+
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/internal/pkg/ports"
 )
@@ -49,7 +51,7 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -59,7 +61,8 @@ func showPorts(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hnd, err := podman.NewHandle(context.Background(), podmanSocket)
+	ctx := context.Background()
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose, 0))
 	if err != nil {
 		return err
 	}

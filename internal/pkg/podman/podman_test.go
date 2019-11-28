@@ -4,39 +4,54 @@ import (
 	"context"
 	"strings"
 
-	"github.com/fromanirh/pack8s/internal/pkg/images"
-	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	logger "github.com/apsdehal/go-logger"
+
+	"github.com/fromanirh/pack8s/internal/pkg/images"
+	"github.com/fromanirh/pack8s/internal/pkg/podman"
+
 	"github.com/fromanirh/pack8s/iopodman"
 )
+
+func NewLogger() *logger.Logger {
+	log, err := logger.New("test", 0, logger.DebugLevel)
+	if err != nil {
+		panic(err)
+	}
+	return log
+}
+
+func NewHandle() *podman.Handle {
+	ctx := context.Background()
+	hnd, err := podman.NewHandle(ctx, "", NewLogger())
+	Expect(err).To(BeNil())
+	return hnd
+}
 
 var _ = Describe("podman", func() {
 	Context("create new handler", func() {
 		It("Should create with default socket without any error", func() {
 			ctx := context.Background()
 
-			_, err := podman.NewHandle(ctx, "")
+			_, err := podman.NewHandle(ctx, "", NewLogger())
 			Expect(err).To(BeNil())
 		})
 
 		It("Should create with user defined socket without any error", func() {
 			ctx := context.Background()
 
-			_, err := podman.NewHandle(ctx, "unix:/run/podman/io.podman")
+			_, err := podman.NewHandle(ctx, "unix:/run/podman/io.podman", NewLogger())
 			Expect(err).To(BeNil())
 		})
 	})
 
 	Context("volumes", func() {
 		It("Should create volume", func() {
-			ctx := context.Background()
+			handler := NewHandle()
 
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
-
-			_, err = handler.CreateNamedVolume("pack8s-test")
+			_, err := handler.CreateNamedVolume("pack8s-test")
 			Expect(err).To(BeNil())
 
 			volumes, err := handler.GetAllVolumes()
@@ -61,12 +76,9 @@ var _ = Describe("podman", func() {
 		})
 
 		It("Should get prefixed volume", func() {
-			ctx := context.Background()
+			handler := NewHandle()
 
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
-
-			_, err = handler.CreateNamedVolume("pack8s-1-test")
+			_, err := handler.CreateNamedVolume("pack8s-1-test")
 			Expect(err).To(BeNil())
 
 			_, err = handler.CreateNamedVolume("pack8s-2-test")
@@ -94,12 +106,9 @@ var _ = Describe("podman", func() {
 		})
 
 		It("Should remove volume", func() {
-			ctx := context.Background()
+			handler := NewHandle()
 
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
-
-			_, err = handler.CreateNamedVolume("pack8s-test")
+			_, err := handler.CreateNamedVolume("pack8s-test")
 			Expect(err).To(BeNil())
 			_, err = handler.CreateNamedVolume("pack8s-test-do-not-delete")
 			Expect(err).To(BeNil())
@@ -144,7 +153,7 @@ var _ = Describe("podman", func() {
 		It("Should create container", func() {
 			ctx := context.Background()
 
-			handler, err := podman.NewHandle(ctx, "")
+			handler, err := podman.NewHandle(ctx, "", NewLogger())
 			Expect(err).To(BeNil())
 
 			name := "pack8s-test"
@@ -163,10 +172,7 @@ var _ = Describe("podman", func() {
 		})
 
 		It("Should start container", func() {
-			ctx := context.Background()
-
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
+			handler := NewHandle()
 
 			name := "pack8s-test"
 			id, err := handler.CreateContainer(iopodman.Create{
@@ -190,10 +196,7 @@ var _ = Describe("podman", func() {
 		})
 
 		It("Should stop container", func() {
-			ctx := context.Background()
-
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
+			handler := NewHandle()
 
 			name := "pack8s-test"
 			id, err := handler.CreateContainer(iopodman.Create{
@@ -217,10 +220,8 @@ var _ = Describe("podman", func() {
 		})
 
 		It("Should find 1 container", func() {
-			ctx := context.Background()
+			handler := NewHandle()
 
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
 			name1 := "pack8s-test"
 			id1, err := handler.CreateContainer(iopodman.Create{
 				Args: []string{images.DockerRegistryImage},
@@ -247,10 +248,8 @@ var _ = Describe("podman", func() {
 		})
 
 		It("Should throw error when 2 containers match prefix", func() {
-			ctx := context.Background()
+			handler := NewHandle()
 
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
 			name1 := "pack8s-test"
 			id1, err := handler.CreateContainer(iopodman.Create{
 				Args: []string{images.DockerRegistryImage},
@@ -276,10 +275,7 @@ var _ = Describe("podman", func() {
 		})
 
 		It("Should remove container", func() {
-			ctx := context.Background()
-
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
+			handler := NewHandle()
 
 			name := "pack8s-test"
 			id, err := handler.CreateContainer(iopodman.Create{
@@ -302,12 +298,9 @@ var _ = Describe("podman", func() {
 
 	Context("pull image", func() {
 		It("Should pull image", func() {
-			ctx := context.Background()
+			handler := NewHandle()
 
-			handler, err := podman.NewHandle(ctx, "")
-			Expect(err).To(BeNil())
-
-			err = handler.PullImage(images.DockerRegistryImage)
+			err := handler.PullImage(images.DockerRegistryImage)
 			Expect(err).To(BeNil())
 
 			images, err := handler.ListImages()

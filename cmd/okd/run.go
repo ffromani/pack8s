@@ -3,13 +3,13 @@ package okd
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
 	"github.com/fromanirh/pack8s/iopodman"
 
 	"github.com/fromanirh/pack8s/internal/pkg/images"
@@ -84,13 +84,7 @@ func NewRunCommand() *cobra.Command {
 }
 
 func run(cmd *cobra.Command, args []string) (err error) {
-
-	prefix, err := cmd.Flags().GetString("prefix")
-	if err != nil {
-		return err
-	}
-
-	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -133,19 +127,20 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	hnd, err := podman.NewHandle(ctx, podmanSocket)
+	log := cmdutil.NewLogger(cOpts.Verbose, 0)
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("downloading all the images needed for %s", cluster)
+	log.Infof("downloading all the images needed for %s", cluster)
 	err = hnd.PullClusterImages(okdRunOpts, "docker.io/"+cluster)
 	if err != nil || okdRunOpts.downloadOnly {
 		return err
 	}
-	log.Printf("downloaded all the images needed for %s, bringing cluster up", cluster)
+	log.Infof("downloaded all the images needed for %s, bringing cluster up", cluster)
 
-	ldgr := ledger.NewLedger(hnd, cmd.OutOrStderr())
+	ldgr := ledger.NewLedger(hnd, cmd.OutOrStderr(), log)
 
 	defer func() {
 		ldgr.Done <- err
@@ -159,7 +154,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		ldgr.Done <- fmt.Errorf("Interrupt received, clean up")
 	}()
 
-	clusterContainerName := prefix + "-cluster"
+	clusterContainerName := cOpts.Prefix + "-cluster"
 	clusterExpose := ports.ToStrings(
 		ports.PortSSH, ports.PortSSHWorker, ports.PortRegistry,
 		ports.PortOCPConsole, ports.PortAPI,
@@ -188,7 +183,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	if okdRunOpts.registryVolume != "" {
 		registryMounts, err = mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
 			mounts.MountInfo{
-				Name: fmt.Sprintf("%s-registry", prefix),
+				Name: fmt.Sprintf("%s-registry", cOpts.Prefix),
 				Path: "/var/lib/registry",
 				Type: "volume",
 			},
@@ -198,7 +193,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	registryName := fmt.Sprintf("%s-registry", prefix)
+	registryName := fmt.Sprintf("%s-registry", cOpts.Prefix)
 	registryMountsStrings := registryMounts.ToStrings()
 	registryLabels := []string{fmt.Sprintf("%s=001", podman.LabelGeneration)}
 	_, err = ldgr.RunContainer(iopodman.Create{
@@ -219,7 +214,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		nfsName := fmt.Sprintf("%s-nfs-ganesha", prefix)
+		nfsName := fmt.Sprintf("%s-nfs-ganesha", cOpts.Prefix)
 		nfsMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/data/nfs", nfsData)}
 		nfsLabels := []string{fmt.Sprintf("%s=010", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{

@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
+
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
@@ -38,16 +40,14 @@ func NewPullCommand() *cobra.Command {
 }
 
 func pullImage(cmd *cobra.Command, args []string) error {
-	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
 	}
 
 	ctx := context.Background()
-	hnd, err := podman.NewHandle(ctx, podmanSocket)
-	if err != nil {
-		return err
-	}
+
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose, 0))
 
 	ref := args[0]
 	if pullOpts.auxImages {

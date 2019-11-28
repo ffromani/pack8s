@@ -3,6 +3,7 @@ module github.com/fromanirh/pack8s
 go 1.12
 
 require (
+	github.com/apsdehal/go-logger v0.0.0-20190515212710-b0d6ccfee0e6
 	github.com/onsi/ginkgo v1.10.3
 	github.com/onsi/gomega v1.7.1
 	github.com/pkg/errors v0.8.1
