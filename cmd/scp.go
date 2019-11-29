@@ -97,7 +97,7 @@ func scp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	log.Noticef("scp %s:%d/%v -> %v", cont.Names, sshPort, src, dst)
+	log.Noticef("scp [%s:%d/%v] => [%v]", cont.Names, sshPort, src, dst)
 
 	signer, err := ssh1.ParsePrivateKey([]byte(sshKey))
 	if err != nil {
