@@ -65,6 +65,9 @@ func remove(cmd *cobra.Command, _ []string) error {
 
 	log := cmdutil.NewLogger(cOpts.Verbose, 0)
 	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
+	if err != nil {
+		return err
+	}
 
 	containers, err := hnd.GetPrefixedContainers(cOpts.Prefix)
 	if err != nil {
