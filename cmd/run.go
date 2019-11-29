@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -13,6 +12,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
 
 	"github.com/fromanirh/pack8s/iopodman"
 
@@ -98,12 +99,7 @@ func NewRunCommand() *cobra.Command {
 }
 
 func run(cmd *cobra.Command, args []string) (err error) {
-	prefix, err := cmd.Flags().GetString("prefix")
-	if err != nil {
-		return err
-	}
-
-	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
 	}
@@ -138,19 +134,20 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	hnd, err := podman.NewHandle(ctx, podmanSocket)
+	log := cmdutil.NewLogger(cOpts.Verbose)
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("downloading all the images needed for %s", cluster)
+	log.Noticef("downloading all the images needed for %s", cluster)
 	err = hnd.PullClusterImages(runOpts, "docker.io/"+cluster)
 	if err != nil || runOpts.downloadOnly {
 		return err
 	}
-	log.Printf("downloaded all the images needed for %s, bringing cluster up", cluster)
+	log.Noticef("downloaded all the images needed for %s, bringing cluster up", cluster)
 
-	ldgr := ledger.NewLedger(hnd, cmd.OutOrStderr())
+	ldgr := ledger.NewLedger(hnd, cmd.OutOrStderr(), log)
 
 	defer func() {
 		ldgr.Done <- err
@@ -164,7 +161,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		ldgr.Done <- fmt.Errorf("Interrupt received, clean up")
 	}()
 
-	dnsmasqName := fmt.Sprintf("%s-dnsmasq", prefix)
+	dnsmasqName := fmt.Sprintf("%s-dnsmasq", cOpts.Prefix)
 	dnsmasqExpose := ports.ToStrings(
 		ports.PortSSH, ports.PortRegistry, ports.PortOCP,
 		ports.PortAPI, ports.PortVNC,
@@ -190,8 +187,10 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		PublishAll: &runOpts.randomPorts,
 	})
 	if err != nil {
+		log.Errorf("DNSMasq run failed: %v", err)
 		return err
 	}
+	log.Noticef("DNSMasq container ready")
 
 	dnsmasqNetwork := fmt.Sprintf("container:%s", dnsmasqID)
 
@@ -200,17 +199,18 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	if runOpts.registryVolume != "" {
 		registryMounts, err = mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
 			mounts.MountInfo{
-				Name: fmt.Sprintf("%s-registry", prefix),
+				Name: fmt.Sprintf("%s-registry", cOpts.Prefix),
 				Path: "/var/lib/registry",
 				Type: "volume",
 			},
 		})
 		if err != nil {
+			log.Errorf("registry volume mapping failed: %v", err)
 			return err
 		}
 	}
 
-	registryName := fmt.Sprintf("%s-registry", prefix)
+	registryName := fmt.Sprintf("%s-registry", cOpts.Prefix)
 	registryMountsStrings := registryMounts.ToStrings()
 	registryLabels := []string{fmt.Sprintf("%s=0001", podman.LabelGeneration)}
 	_, err = ldgr.RunContainer(iopodman.Create{
@@ -222,8 +222,10 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		Network:    &dnsmasqNetwork,
 	})
 	if err != nil {
+		log.Errorf("Registry run failed: %v", err)
 		return err
 	}
+	log.Noticef("Registry container ready")
 
 	if runOpts.nfsData != "" {
 		nfsData, err := filepath.Abs(runOpts.nfsData)
@@ -231,7 +233,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		nfsName := fmt.Sprintf("%s-nfs", prefix)
+		nfsName := fmt.Sprintf("%s-nfs", cOpts.Prefix)
 		nfsMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/data/nfs", nfsData)}
 		nfsLabels := []string{fmt.Sprintf("%s=010", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
@@ -243,12 +245,14 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Privileged: &runOpts.privileged,
 		})
 		if err != nil {
+			log.Errorf("NFS run failed: %v", err)
 			return err
 		}
+		log.Noticef("NFS container ready")
 	}
 
 	if runOpts.enableCeph {
-		cephName := fmt.Sprintf("%s-ceph", prefix)
+		cephName := fmt.Sprintf("%s-ceph", cOpts.Prefix)
 		cephLabels := []string{fmt.Sprintf("%s=011", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
 			Args: []string{images.CephImage, "demo"},
@@ -264,8 +268,10 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Privileged: &runOpts.privileged,
 		})
 		if err != nil {
+			log.Errorf("CEPH run failed: %v", err)
 			return err
 		}
+		log.Noticef("CEPH container ready")
 	}
 
 	if runOpts.logDir != "" {
@@ -279,7 +285,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		fluentdMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/fluentd/log/collected", logDir)}
-		fluentdName := fmt.Sprintf("%s-fluentd", prefix)
+		fluentdName := fmt.Sprintf("%s-fluentd", cOpts.Prefix)
 		fluentdLabels := []string{fmt.Sprintf("%s=012", podman.LabelGeneration)}
 		_, err = ldgr.RunContainer(iopodman.Create{
 			Args: []string{
@@ -295,8 +301,10 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Network:    &dnsmasqNetwork,
 		})
 		if err != nil {
+			log.Errorf("FluentD run failed: %v", err)
 			return err
 		}
+		log.Noticef("FluentD container ready")
 	}
 
 	wg := sync.WaitGroup{}
@@ -327,16 +335,17 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 		nodeMounts, err := mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
 			mounts.MountInfo{
-				Name: fmt.Sprintf("%s-%s", prefix, nodeName),
+				Name: fmt.Sprintf("%s-%s", cOpts.Prefix, nodeName),
 				Path: "/var/run/disk",
 				Type: "volume",
 			},
 		})
 		if err != nil {
+			log.Errorf("Node volume mapping failed: %v", err)
 			return err
 		}
 
-		contNodeName := nodeContainer(prefix, nodeName)
+		contNodeName := nodeContainer(cOpts.Prefix, nodeName)
 		contNodeMountsStrings := nodeMounts.ToStrings()
 		contNodeID, err := ldgr.RunContainer(iopodman.Create{
 			Args: []string{cluster, "/bin/bash", "-c", fmt.Sprintf("/vm.sh -n /var/run/disk/disk.qcow2 --memory %s --cpu %s %s", runOpts.memory, strconv.Itoa(int(runOpts.cpu)), nodeQemuArgs)},
@@ -350,40 +359,43 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			Privileged: &runOpts.privileged,
 		})
 		if err != nil {
+			log.Errorf("Node container run failed: %v", err)
 			return err
 		}
 
-		log.Printf("waiting on node %s for SSH availability", nodeName)
+		log.Noticef("waiting on node %s for SSH availability", nodeName)
 		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "while [ ! -f /ssh_ready ] ; do sleep 1; done"}, os.Stdout)
 		if err != nil {
 			return fmt.Errorf("checking for ssh.sh script for node %s failed: %s", nodeName, err)
 		}
-		log.Printf("node %s has SSH available!", nodeName)
+		log.Noticef("node %s has SSH available!", nodeName)
 
-		log.Printf("checking for /scripts/%s.sh", nodeName)
+		log.Infof("checking for /scripts/%s.sh", nodeName)
 		//check if we have a special provision script
 		err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("test -f /scripts/%s.sh", nodeName)}, os.Stdout)
 		if err == nil {
-			log.Printf("using special provisioning script for %s", nodeName)
+			log.Infof("using special provisioning script for %s", nodeName)
 			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", fmt.Sprintf("ssh.sh sudo /bin/bash < /scripts/%s.sh", nodeName)}, os.Stdout)
 		} else {
-			log.Printf("using generic provisioning script for %s", nodeName)
+			log.Infof("using generic provisioning script for %s", nodeName)
 			err = hnd.Exec(contNodeName, []string{"/bin/bash", "-c", "ssh.sh sudo /bin/bash < /scripts/nodes.sh"}, os.Stdout)
 		}
 		if err != nil {
 			return fmt.Errorf("provisioning node %s failed: %s", nodeName, err)
 		}
 
-		log.Printf("waiting for %s", contNodeID)
+		log.Noticef("waiting for %s", contNodeID)
 		go func(id string) {
 			hnd.WaitContainer(id, int64(1*time.Second))
 			wg.Done()
+			log.Noticef("%s (%s) container ready", contNodeID, nodeName)
 		}(contNodeID)
 	}
+	log.Noticef("Nodes ready")
 
 	if runOpts.enableCeph {
 		keyRing := new(bytes.Buffer)
-		err := hnd.Exec(nodeContainer(prefix, "ceph"), []string{
+		err := hnd.Exec(nodeContainer(cOpts.Prefix, "ceph"), []string{
 			"/bin/bash",
 			"-c",
 			"ceph auth print-key connent.admin | base64",
@@ -393,7 +405,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		}
 		nodeName := nodeNameFromIndex(1)
 		key := bytes.TrimSpace(keyRing.Bytes())
-		err = hnd.Exec(nodeContainer(prefix, nodeName), []string{
+		err = hnd.Exec(nodeContainer(cOpts.Prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			fmt.Sprintf("ssh.sh sudo sed -i \"s/replace-me/%s/g\" /tmp/ceph/ceph-secret.yaml", key),
@@ -401,7 +413,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			return err
 		}
-		err = hnd.Exec(nodeContainer(prefix, nodeName), []string{
+		err = hnd.Exec(nodeContainer(cOpts.Prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			"ssh.sh sudo /bin/bash < /scripts/ceph-csi.sh",
@@ -414,7 +426,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 	// If logging is enabled, deploy the default fluent logging
 	if runOpts.logDir != "" {
 		nodeName := nodeNameFromIndex(1)
-		err := hnd.Exec(nodeContainer(prefix, nodeName), []string{
+		err := hnd.Exec(nodeContainer(cOpts.Prefix, nodeName), []string{
 			"/bin/bash",
 			"-c",
 			"ssh.sh sudo /bin/bash < /scripts/logging.sh",
@@ -423,6 +435,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("provisioning logging failed: %s", err)
 		}
 	}
+	log.Noticef("Cluster ready")
 
 	// If background flag was specified, we don't want to clean up if we reach that state
 	if !runOpts.background {

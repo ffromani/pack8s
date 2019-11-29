@@ -17,6 +17,7 @@ clean:
 	rm -f pack8s
 	rm -f varlink-go-interface-generator
 	rm -rf _out
+	rm -rf kubevirtci
 
 tests:
 	./hack/test/test.sh

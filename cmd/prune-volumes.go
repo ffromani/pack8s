@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
+
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
@@ -20,14 +22,13 @@ func NewPruneVolumesCommand() *cobra.Command {
 }
 
 func pruneVolumes(cmd *cobra.Command, _ []string) error {
-	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
 	}
 
 	ctx := context.Background()
-
-	hnd, err := podman.NewHandle(ctx, podmanSocket)
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose))
 	if err != nil {
 		return err
 	}

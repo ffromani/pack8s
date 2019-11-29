@@ -5,12 +5,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	ssh1 "golang.org/x/crypto/ssh"
+
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
 
 	"github.com/spf13/cobra"
 
@@ -70,25 +71,23 @@ func NewSCPCommand() *cobra.Command {
 }
 
 func scp(cmd *cobra.Command, args []string) error {
-	prefix, err := cmd.Flags().GetString("prefix")
+	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
 	}
 
-	podmanSocket, err := cmd.Flags().GetString("podman-socket")
-	if err != nil {
-		return err
-	}
+	log := cmdutil.NewLogger(cOpts.Verbose)
 
 	src := args[0]
 	dst := args[1]
+	ctx := context.Background()
 
-	hnd, err := podman.NewHandle(context.Background(), podmanSocket)
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err
 	}
 
-	cont, err := hnd.FindPrefixedContainer(prefix + "-" + scpOpts.containerName)
+	cont, err := hnd.FindPrefixedContainer(cOpts.Prefix + "-" + scpOpts.containerName)
 	if err != nil {
 		return err
 	}
@@ -97,6 +96,8 @@ func scp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	log.Noticef("scp [%s:%d/%v] => [%v]", cont.Names, sshPort, src, dst)
 
 	signer, err := ssh1.ParsePrivateKey([]byte(sshKey))
 	if err != nil {
@@ -112,7 +113,6 @@ func scp(cmd *cobra.Command, args []string) error {
 	}
 
 	sshAddr := fmt.Sprintf("127.0.0.1:%v", sshPort)
-	log.Printf("connecting: SCP to %s", sshAddr)
 	connection, err := ssh1.Dial("tcp", sshAddr, config)
 	if err != nil {
 		return err
@@ -144,9 +144,6 @@ func scp(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
-	log.Printf("SCP session ready")
-	defer log.Printf("SCP session done")
 
 	errChan := make(chan error)
 
@@ -199,12 +196,15 @@ func scp(cmd *cobra.Command, args []string) error {
 	copyError := <-errChan
 
 	if err == nil && copyError != nil {
+		log.Noticef("scp: copy error: %v", copyError)
 		return copyError
 	}
 
 	if copyError != nil {
 		fmt.Fprintln(cmd.OutOrStderr(), copyError)
+		log.Noticef("scp: copy failed: %v", copyError)
 	}
 
+	log.Noticef("scp: copy done: (err=%v)", err)
 	return err
 }

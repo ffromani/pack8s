@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"context"
-	"log"
 	"sort"
 
 	"github.com/spf13/cobra"
+
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
 
 	"github.com/fromanirh/pack8s/iopodman"
 
@@ -55,54 +56,53 @@ func (cl containerList) Swap(i, j int) {
 }
 
 func remove(cmd *cobra.Command, _ []string) error {
-	prefix, err := cmd.Flags().GetString("prefix")
-	if err != nil {
-		return err
-	}
-
-	podmanSocket, err := cmd.Flags().GetString("podman-socket")
+	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
 	}
 
 	ctx := context.Background()
 
-	hnd, err := podman.NewHandle(ctx, podmanSocket)
+	log := cmdutil.NewLogger(cOpts.Verbose)
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err
 	}
 
-	containers, err := hnd.GetPrefixedContainers(prefix)
+	containers, err := hnd.GetPrefixedContainers(cOpts.Prefix)
 	if err != nil {
 		return err
 	}
 
 	sort.Sort(containerList(containers))
 
-	for _, cont := range containers {
-		log.Printf("container to remove: %s (%s)\n", cont.Names, cont.Id)
-	}
-
 	force := true
 	removeVolumes := true
 
+	log.Infof("bringing cluster down (containers=%d)", len(containers))
+
 	for _, cont := range containers {
+		log.Noticef("stopping container: %s", cont.Names)
+
 		_, err = hnd.StopContainer(cont.Id, 5) // TODO
 		if err != nil {
 			return err
 		}
+
+		log.Noticef("removing container: %s", cont.Names)
 		_, err = hnd.RemoveContainer(cont, force, removeVolumes)
 		if err != nil {
 			return err
 		}
 	}
 
-	volumes, err := hnd.GetPrefixedVolumes(prefix)
+	volumes, err := hnd.GetPrefixedVolumes(cOpts.Prefix)
 	if err != nil {
 		return err
 	}
 
 	if len(volumes) > 0 {
+		log.Infof("cleaning cluster (volumes=%d)", len(volumes))
 		err = hnd.RemoveVolumes(volumes)
 		if err != nil {
 			return err
@@ -112,5 +112,7 @@ func remove(cmd *cobra.Command, _ []string) error {
 	if rmOpts.prune {
 		err = hnd.PruneVolumes()
 	}
+
+	log.Infof("cluster removed err=%s", err)
 	return err
 }

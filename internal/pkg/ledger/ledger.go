@@ -3,7 +3,8 @@ package ledger
 import (
 	"fmt"
 	"io"
-	"log"
+
+	logger "github.com/apsdehal/go-logger"
 
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/iopodman"
@@ -14,9 +15,10 @@ type Ledger struct {
 	containers chan string
 	volumes    chan string
 	Done       chan error
+	log        *logger.Logger
 }
 
-func NewLedger(hnd *podman.Handle, errWriter io.Writer) Ledger {
+func NewLedger(hnd *podman.Handle, errWriter io.Writer, log *logger.Logger) Ledger {
 	containers := make(chan string)
 	volumes := make(chan string)
 	done := make(chan error)
@@ -55,8 +57,10 @@ func NewLedger(hnd *podman.Handle, errWriter io.Writer) Ledger {
 		}
 	}()
 
+	defer log.Infof("ledger ready")
 	return Ledger{
 		hnd:        hnd,
+		log:        log,
 		containers: containers,
 		volumes:    volumes,
 		Done:       done,
@@ -70,20 +74,22 @@ func (ld Ledger) MakeVolume(name string) (string, error) {
 	}
 
 	ld.volumes <- volName
-	log.Printf("tracked volume %s", volName)
+	ld.log.Infof("tracked volume %s", volName)
 	return volName, err
 }
 
 func (ld Ledger) RunContainer(conf iopodman.Create) (string, error) {
+	ld.log.Debugf("running container...")
 	contID, err := ld.hnd.CreateContainer(conf)
 	if err != nil {
 		return contID, err
 	}
 
 	ld.containers <- contID
-	log.Printf("tracked container %s", contID)
+	ld.log.Infof("tracked container %s", contID)
 	if _, err := ld.hnd.StartContainer(contID); err != nil {
 		return contID, err
 	}
+	ld.log.Infof("started container %s", contID)
 	return contID, nil
 }

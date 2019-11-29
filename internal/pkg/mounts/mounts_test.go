@@ -5,22 +5,34 @@ import (
 	"bytes"
 	"context"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	logger "github.com/apsdehal/go-logger"
+
 	"github.com/fromanirh/pack8s/internal/pkg/ledger"
 	"github.com/fromanirh/pack8s/internal/pkg/mounts"
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/iopodman"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
+
+func NewLogger() *logger.Logger {
+	log, err := logger.New("test", 0, logger.DebugLevel)
+	if err != nil {
+		panic(err)
+	}
+	return log
+}
 
 var _ = Describe("mounts", func() {
 	ctx := context.Background()
 
-	hnd, _ := podman.NewHandle(ctx, "")
+	log := NewLogger()
+	hnd, _ := podman.NewHandle(ctx, "", log)
 
 	var buf bytes.Buffer
 	w := bufio.NewWriter(&buf)
-	ldgr := ledger.NewLedger(hnd, w)
+	ldgr := ledger.NewLedger(hnd, w, log)
 
 	defer func() {
 		ldgr.Done <- nil

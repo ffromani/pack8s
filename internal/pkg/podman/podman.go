@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
 
+	logger "github.com/apsdehal/go-logger"
 	"github.com/varlink/go/varlink"
 
 	"github.com/fromanirh/pack8s/internal/pkg/images"
@@ -90,18 +90,20 @@ type Handle struct {
 	socket string
 	ctx    context.Context
 	conn   *varlink.Connection
+	log    *logger.Logger
 }
 
-func NewHandle(ctx context.Context, socket string) (*Handle, error) {
+func NewHandle(ctx context.Context, socket string, log *logger.Logger) (*Handle, error) {
 	if socket == "" {
 		socket = DefaultSocket
 	}
 	conn, err := varlink.NewConnection(ctx, socket)
-	log.Printf("connected to %s", socket)
+	log.Infof("connected to %s", socket)
 	return &Handle{
 		socket: socket,
 		ctx:    ctx,
 		conn:   conn,
+		log:    log,
 	}, err
 }
 
@@ -109,9 +111,10 @@ func (hnd *Handle) reconnect() (bool, error) {
 	if hnd.conn == nil {
 		var err error
 		hnd.conn, err = varlink.NewConnection(hnd.ctx, hnd.socket)
-		log.Printf("reconnected to %s (err=%v)", hnd.socket, err)
+		hnd.log.Noticef("reconnected to %s (err=%v)", hnd.socket, err)
 		return true, err
 	}
+	hnd.log.Debugf("already connected to %s", hnd.socket)
 	return false, nil
 }
 
@@ -120,7 +123,7 @@ func (hnd *Handle) disconnect() error {
 	if hnd.conn != nil {
 		err = hnd.conn.Close()
 		hnd.conn = nil
-		log.Printf("disconnected from %s (err=%v)", hnd.socket, err)
+		hnd.log.Infof("disconnected from %s (err=%v)", hnd.socket, err)
 	}
 	return err
 }
@@ -192,11 +195,11 @@ func (hnd *Handle) GetPrefixedContainers(prefix string) ([]iopodman.Container, e
 		return ret, err
 	}
 
-	log.Printf("found %d containers in the system - prefix=[%s]", len(containers), prefix)
+	hnd.log.Infof("found %d containers in the system - prefix=[%s]", len(containers), prefix)
 	for _, cont := range containers {
 		// TODO: why is it Name*s*? there is a bug lurking here? docs are unclear.
 		if strings.HasPrefix(cont.Names, prefix) {
-			log.Printf("matching container: %s (%s)\n", cont.Names, cont.Id)
+			hnd.log.Debugf("matching container: %s (%s)\n", cont.Names, cont.Id)
 			ret = append(ret, cont)
 		}
 	}
@@ -217,10 +220,10 @@ func (hnd *Handle) GetPrefixedVolumes(prefix string) ([]iopodman.Volume, error) 
 		return ret, err
 	}
 
-	log.Printf("found %d volumess in the system", len(volumes))
+	hnd.log.Infof("found %d volumes in the system", len(volumes))
 	for _, vol := range volumes {
 		if strings.HasPrefix(vol.Name, prefix) {
-			log.Printf("matching volume: %s @(%s)\n", vol.Name, vol.MountPoint)
+			hnd.log.Debugf("matching volume: %s @(%s)\n", vol.Name, vol.MountPoint)
 			ret = append(ret, vol)
 		}
 	}
@@ -275,7 +278,7 @@ func (hnd *Handle) RemoveVolumes(volumes []iopodman.Volume) error {
 
 	volumeNames := []string{}
 	for _, vol := range volumes {
-		log.Printf("removing volume %s @%s", vol.Name, vol.MountPoint)
+		hnd.log.Infof("removing volume %s @%s", vol.Name, vol.MountPoint)
 		volumeNames = append(volumeNames, vol.Name)
 	}
 	_, _, err = iopodman.VolumeRemove().Call(hnd.ctx, hnd.conn, iopodman.VolumeRemoveOpts{
@@ -291,7 +294,7 @@ func (hnd *Handle) RemoveContainer(cont iopodman.Container, force, removeVolumes
 		return "", err
 	}
 
-	log.Printf("trying to remove: %s (%s) force=%v removeVolumes=%v\n", cont.Names, cont.Id, force, removeVolumes)
+	hnd.log.Infof("trying to remove: %s (%s) force=%v removeVolumes=%v\n", cont.Names, cont.Id, force, removeVolumes)
 	return iopodman.RemoveContainer().Call(hnd.ctx, hnd.conn, cont.Id, force, removeVolumes)
 }
 
@@ -358,7 +361,7 @@ func (hnd *Handle) PullImage(ref string) error {
 		return err
 	}
 
-	log.Printf("pulling image: %s", ref)
+	hnd.log.Infof("pulling image: %s", ref)
 
 	tries := []int{0, 1, 2, 6}
 	interval := 3 * time.Second
@@ -369,7 +372,7 @@ func (hnd *Handle) PullImage(ref string) error {
 		time.Sleep(time.Duration(i) * time.Second)
 
 		prefix := fmt.Sprintf("attempt #%d", idx)
-		log.Printf("%s to download '%s' - progress every %v\n", prefix, ref, interval)
+		hnd.log.Infof("%s to download '%s' - progress every %v\n", prefix, ref, interval)
 		err := hnd.pullImage(ticker, prefix, ref)
 		if err == nil {
 			return nil
@@ -420,12 +423,12 @@ func (hnd *Handle) pullImage(ticker *time.Ticker, prefix, ref string) error {
 	for {
 		select {
 		case <-ticker.C:
-			log.Printf("%s: downloading...", prefix)
+			hnd.log.Infof("%s: downloading...", prefix)
 		case err = <-errChan:
 			if err != nil {
-				log.Printf("%s: failed to download %s: %v\n", prefix, ref, err)
+				hnd.log.Warningf("%s: failed to download %s: %v\n", prefix, ref, err)
 			} else {
-				log.Printf("%s: downloaded: %s", prefix, ref)
+				hnd.log.Infof("%s: downloaded: %s", prefix, ref)
 			}
 			return err
 		}
