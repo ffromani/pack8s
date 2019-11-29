@@ -63,7 +63,7 @@ func remove(cmd *cobra.Command, _ []string) error {
 
 	ctx := context.Background()
 
-	log := cmdutil.NewLogger(cOpts.Verbose, 0)
+	log := cmdutil.NewLogger(cOpts.Verbose)
 	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err

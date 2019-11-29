@@ -32,7 +32,7 @@ func ssh(cmd *cobra.Command, args []string) error {
 	node := args[0]
 
 	ctx := context.Background()
-	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose, 0))
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose))
 	if err != nil {
 		return err
 	}

@@ -76,13 +76,13 @@ func scp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	log := cmdutil.NewLogger(cOpts.Verbose, 0)
+	log := cmdutil.NewLogger(cOpts.Verbose)
 
 	src := args[0]
 	dst := args[1]
 	ctx := context.Background()
 
-	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose, 0))
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err
 	}

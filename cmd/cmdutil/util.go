@@ -40,7 +40,13 @@ func GetCommonOpts(cmd *cobra.Command) (CommonOpts, error) {
 	}, nil
 }
 
-func NewLogger(lev, color int) *logger.Logger {
+func NewLogger(lev int) *logger.Logger {
+	color := 0
+	if val, ok := os.LookupEnv("PACK8S_COLORS"); ok {
+		if v, err := strconv.Atoi(val); err == nil {
+			color = v
+		}
+	}
 	log, err := logger.New("pack8s", color, toLogLevel(lev))
 	if err != nil {
 		panic(err)

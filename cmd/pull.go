@@ -46,8 +46,8 @@ func pullImage(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
-
-	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose, 0))
+	log := cmdutil.NewLogger(cOpts.Verbose)
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err
 	}

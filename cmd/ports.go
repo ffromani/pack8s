@@ -62,7 +62,7 @@ func showPorts(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
-	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose, 0))
+	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose))
 	if err != nil {
 		return err
 	}
