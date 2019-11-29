@@ -4,3 +4,4 @@ varlink-go-interface-generator
 internal/pkg/version/version.go
 _out
 kubevirtci
+.kube
