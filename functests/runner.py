@@ -209,15 +209,14 @@ def make_env(**kwargs):
 @contextlib.contextmanager
 def running_cluster(provider, basedir, timeout):
     cl = Cluster.setup(provider, basedir)
-    cl.start(timeout)
-    if cl.status != Cluster.RUNNING:
-        raise RuntimeError("cluster start failed")
-
     try:
+        cl.start(timeout)
+        if cl.status != Cluster.RUNNING:
+            raise RuntimeError("cluster start failed")
+
         yield OC(cl.kubeconfig())
     finally:
         cl.stop(timeout)
-        pass
 
 
 def run(provider, basedir, timeout, checkfn):
