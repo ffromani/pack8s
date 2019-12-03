@@ -86,11 +86,17 @@ func SprintError(methodname string, err error) string {
 	return buf.String()
 }
 
+type PullProgressReporter interface {
+	GetInterval() time.Duration
+	Report(ref string, elapsed, completed uint64, err error) error
+}
+
 type Handle struct {
-	socket string
-	ctx    context.Context
-	conn   *varlink.Connection
-	log    *logger.Logger
+	PullReporter PullProgressReporter
+	socket       string
+	ctx          context.Context
+	conn         *varlink.Connection
+	log          *logger.Logger
 }
 
 func NewHandle(ctx context.Context, socket string, log *logger.Logger) (*Handle, error) {
@@ -99,12 +105,14 @@ func NewHandle(ctx context.Context, socket string, log *logger.Logger) (*Handle,
 	}
 	conn, err := varlink.NewConnection(ctx, socket)
 	log.Infof("connected to %s", socket)
-	return &Handle{
-		socket: socket,
-		ctx:    ctx,
-		conn:   conn,
-		log:    log,
-	}, err
+	hnd := Handle{
+		PullReporter: pullProgressReporter{Log: log},
+		socket:       socket,
+		ctx:          ctx,
+		conn:         conn,
+		log:          log,
+	}
+	return &hnd, err
 }
 
 func (hnd *Handle) reconnect() (bool, error) {
@@ -361,10 +369,10 @@ func (hnd *Handle) PullImage(ref string) error {
 		return err
 	}
 
-	hnd.log.Infof("pulling image: %s", ref)
+	hnd.log.Noticef("pulling image: %s", ref)
 
 	tries := []int{0, 1, 2, 6}
-	interval := 3 * time.Second
+	interval := hnd.PullReporter.GetInterval() * time.Second
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -420,19 +428,34 @@ func (hnd *Handle) pullImage(ticker *time.Ticker, prefix, ref string) error {
 		errChan <- err
 	}()
 
+	hnd.PullReporter.Report(ref, 0, 0, nil)
 	for {
 		select {
 		case <-ticker.C:
-			hnd.log.Infof("%s: downloading...", prefix)
+			hnd.PullReporter.Report(ref, 0, 1, nil)
 		case err = <-errChan:
-			if err != nil {
-				hnd.log.Warningf("%s: failed to download %s: %v\n", prefix, ref, err)
-			} else {
-				hnd.log.Infof("%s: downloaded: %s", prefix, ref)
-			}
-			return err
+			return hnd.PullReporter.Report(ref, 1, 1, err)
 		}
 	}
 
 	return fmt.Errorf("pull failed - internal error") // can't be reached
+}
+
+type pullProgressReporter struct {
+	Log *logger.Logger
+}
+
+func (ppr pullProgressReporter) GetInterval() time.Duration {
+	return 10 // assuming NOT-interactive report
+}
+
+func (ppr pullProgressReporter) Report(ref string, elapsed, completed uint64, err error) error {
+	if err != nil {
+		ppr.Log.Warningf("download failed for %s: %v\n", ref, err)
+	} else if completed != 0 && elapsed == completed {
+		ppr.Log.Noticef("downloaded completed for %s", ref)
+	} else {
+		ppr.Log.Infof("downloading %s...", ref)
+	}
+	return err
 }

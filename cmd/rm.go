@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -61,10 +60,7 @@ func remove(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	ctx := context.Background()
-
-	log := cmdutil.NewLogger(cOpts.Verbose)
-	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
+	hnd, log, err := cOpts.GetHandle()
 	if err != nil {
 		return err
 	}

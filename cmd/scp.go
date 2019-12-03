@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/internal/pkg/ports"
 )
 
@@ -76,13 +74,10 @@ func scp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	log := cmdutil.NewLogger(cOpts.Verbose)
-
 	src := args[0]
 	dst := args[1]
-	ctx := context.Background()
 
-	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
+	hnd, log, err := cOpts.GetHandle()
 	if err != nil {
 		return err
 	}

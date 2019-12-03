@@ -1,18 +1,24 @@
 package cmdutil
 
 import (
+	"context"
 	"os"
 	"strconv"
 
 	logger "github.com/apsdehal/go-logger"
+	isatty "github.com/mattn/go-isatty"
 
 	"github.com/spf13/cobra"
+
+	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
 type CommonOpts struct {
 	Prefix       string
 	PodmanSocket string
 	Verbose      int
+	IsTTY        bool
+	Color        bool
 }
 
 func GetCommonOpts(cmd *cobra.Command) (CommonOpts, error) {
@@ -28,28 +34,47 @@ func GetCommonOpts(cmd *cobra.Command) (CommonOpts, error) {
 	if err != nil {
 		return CommonOpts{}, err
 	}
+
 	if val, ok := os.LookupEnv("PACK8S_VERBOSE"); ok {
 		if v, err := strconv.Atoi(val); err == nil {
 			verbose = v
 		}
 	}
+
+	color := false
+	if val, ok := os.LookupEnv("PACK8S_COLORS"); ok {
+		color = isTruish(val)
+	}
+
 	return CommonOpts{
 		Prefix:       prefix,
 		PodmanSocket: podmanSocket,
 		Verbose:      verbose,
+		IsTTY:        isatty.IsTerminal(os.Stderr.Fd()),
+		Color:        color,
 	}, nil
 }
 
-func NewLogger(lev int) *logger.Logger {
-	color := 0
-	if val, ok := os.LookupEnv("PACK8S_COLORS"); ok {
-		if v, err := strconv.Atoi(val); err == nil {
-			color = v
-		}
-	}
+func (co CommonOpts) GetLogger() *logger.Logger {
+	return NewLogger(co.Verbose, co.Color, co.IsTTY)
+}
+
+func (co CommonOpts) GetHandle() (*podman.Handle, *logger.Logger, error) {
+	ctx := context.Background()
+	log := co.GetLogger()
+	hnd, err := podman.NewHandle(ctx, co.PodmanSocket, log)
+	return hnd, log, err
+}
+
+func NewLogger(lev int, color, tty bool) *logger.Logger {
 	log, err := logger.New("pack8s", color, toLogLevel(lev))
 	if err != nil {
 		panic(err)
+	}
+	if tty { // interactive
+		log.SetFormat("%{message}")
+	} else {
+		log.SetFormat("%{time} %{message}")
 	}
 	log.Debugf("logger level: %v", lev)
 	return log
@@ -71,4 +96,16 @@ func toLogLevel(lev int) logger.LogLevel {
 	}
 	// should never be reached
 	return logger.InfoLevel
+}
+
+func isTruish(v string) bool {
+	switch v {
+	case "1":
+		return true
+	case "Y", "y":
+		return true
+	case "YES", "yes":
+		return true
+	}
+	return false
 }

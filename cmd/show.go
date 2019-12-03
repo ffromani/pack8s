@@ -1,14 +1,11 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
 	"github.com/fromanirh/pack8s/cmd/cmdutil"
-
-	"github.com/fromanirh/pack8s/internal/pkg/podman"
 )
 
 type showOptions struct {
@@ -36,8 +33,7 @@ func showContainers(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx := context.Background()
-	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, cmdutil.NewLogger(cOpts.Verbose))
+	hnd, _, err := cOpts.GetHandle()
 	if err != nil {
 		return err
 	}
