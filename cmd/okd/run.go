@@ -5,18 +5,16 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
-	"github.com/fromanirh/pack8s/cmd/cmdutil"
 	"github.com/fromanirh/pack8s/iopodman"
 
-	"github.com/fromanirh/pack8s/internal/pkg/images"
 	"github.com/fromanirh/pack8s/internal/pkg/ledger"
-	"github.com/fromanirh/pack8s/internal/pkg/mounts"
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
 	"github.com/fromanirh/pack8s/internal/pkg/ports"
+
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
 )
 
 type okdRunOptions struct {
@@ -178,53 +176,12 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	clusterNetwork := fmt.Sprintf("container:%s", clusterID)
 
-	// TODO: how to use the user-supplied name?
-	var registryMounts mounts.MountMapping
-	if okdRunOpts.registryVolume != "" {
-		registryMounts, err = mounts.NewVolumeMappings(ldgr, []mounts.MountInfo{
-			mounts.MountInfo{
-				Name: fmt.Sprintf("%s-registry", cOpts.Prefix),
-				Path: "/var/lib/registry",
-				Type: "volume",
-			},
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	registryName := fmt.Sprintf("%s-registry", cOpts.Prefix)
-	registryMountsStrings := registryMounts.ToStrings()
-	registryLabels := []string{fmt.Sprintf("%s=001", podman.LabelGeneration)}
-	_, err = ldgr.RunContainer(iopodman.Create{
-		Args:       []string{images.DockerRegistryImage},
-		Label:      &registryLabels,
-		Mount:      &registryMountsStrings,
-		Name:       &registryName,
-		Network:    &clusterNetwork,
-		Privileged: &okdRunOpts.privileged,
-	})
+	err = cmdutil.SetupRegistry(ldgr, cOpts.Prefix, clusterNetwork, okdRunOpts.registryVolume, okdRunOpts.privileged)
 	if err != nil {
 		return err
 	}
-
 	if okdRunOpts.nfsData != "" {
-		nfsData, err := filepath.Abs(okdRunOpts.nfsData)
-		if err != nil {
-			return err
-		}
-
-		nfsName := fmt.Sprintf("%s-nfs-ganesha", cOpts.Prefix)
-		nfsMounts := []string{fmt.Sprintf("type=bind,source=%s,destination=/data/nfs", nfsData)}
-		nfsLabels := []string{fmt.Sprintf("%s=010", podman.LabelGeneration)}
-		_, err = ldgr.RunContainer(iopodman.Create{
-			Args:       []string{images.NFSGaneshaImage},
-			Label:      &nfsLabels,
-			Mount:      &nfsMounts,
-			Name:       &nfsName,
-			Network:    &clusterNetwork,
-			Privileged: &okdRunOpts.privileged,
-		})
+		err = cmdutil.SetupNFS(ldgr, cOpts.Prefix, clusterNetwork, okdRunOpts.nfsData, okdRunOpts.privileged)
 		if err != nil {
 			return err
 		}
