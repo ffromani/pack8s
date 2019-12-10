@@ -67,7 +67,12 @@ func (co CommonOpts) GetHandle() (*podman.Handle, *logger.Logger, error) {
 }
 
 func NewLogger(lev int, color, tty bool) *logger.Logger {
-	log, err := logger.New("pack8s", color, toLogLevel(lev))
+	// go-logger doesn't accept bool, uses ints as bools (?)
+	colored := 0
+	if color {
+		colored = 1
+	}
+	log, err := logger.New("pack8s", colored, toLogLevel(lev))
 	if err != nil {
 		panic(err)
 	}
