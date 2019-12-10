@@ -27,6 +27,15 @@ func NewShowCommand() *cobra.Command {
 	return show
 }
 
+/*
+ * The show command is unique among the other pack8s commands because it is the only one it wants
+ * to display informations on stdout.
+ * Hence, we make explicit use of fmt.*[Pp]rintf and not just logging.
+ * The output here is meant for the immediate and actual consumption of the user: that's the result
+ * the user asked and wanted to have.
+ * Logging OTOH is rarely explciitely asked by the user, and always as by product because something
+ * else didn't go according to the plan.
+ */
 func showContainers(cmd *cobra.Command, args []string) error {
 	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
