@@ -134,7 +134,7 @@ func run(cmd *cobra.Command, args []string) (err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	log := cmdutil.NewLogger(cOpts.Verbose)
+	log := cOpts.GetLogger()
 	hnd, err := podman.NewHandle(ctx, cOpts.PodmanSocket, log)
 	if err != nil {
 		return err
