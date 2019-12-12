@@ -87,11 +87,11 @@ func pullImage(cmd *cobra.Command, args []string) error {
 		hnd.PullReporter = tpp
 	}
 
-	ref := args[0]
+	cluster := args[0]
 	if pullOpts.auxImages {
 		// if we always do PullClusterImages, we bring the docker registry, which is something
 		// we may actually don't want to do here (wasted work)
-		return hnd.PullClusterImages(pullOpts, ref)
+		return hnd.PullClusterImages(pullOpts, cOpts.Registry, cluster)
 	}
-	return hnd.PullImage(ref)
+	return hnd.PullImageFromRegistry(cOpts.Registry, cluster)
 }
