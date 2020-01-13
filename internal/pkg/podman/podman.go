@@ -363,6 +363,11 @@ func (hnd *Handle) ListImages() ([]iopodman.Image, error) {
 	return iopodman.ListImages().Call(hnd.ctx, hnd.conn)
 }
 
+func (hnd *Handle) PullImageFromRegistry(registry, image string) error {
+	imageRef := registry + "/" + image // TODO: is that a path? an URL? something else?
+	return hnd.PullImage(imageRef)
+}
+
 func (hnd *Handle) PullImage(ref string) error {
 	_, err := hnd.reconnect()
 	if err != nil {
@@ -389,9 +394,9 @@ func (hnd *Handle) PullImage(ref string) error {
 	return fmt.Errorf("failed to download %s %d times, giving up.", ref, len(tries))
 }
 
-func (hnd *Handle) PullClusterImages(reqs images.Requests, clusterImage string) error {
+func (hnd *Handle) PullClusterImages(reqs images.Requests, clusterRegistry, clusterImage string) error {
 	var err error
-	err = hnd.PullImage(clusterImage)
+	err = hnd.PullImageFromRegistry(clusterRegistry, clusterImage)
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/fromanirh/pack8s/internal/pkg/podman"
+
+	"github.com/fromanirh/pack8s/cmd/cmdutil"
 )
 
 // NewRootCommand returns entrypoint command to interact with all other commands
@@ -22,9 +24,7 @@ func NewRootCommand() *cobra.Command {
 		SilenceErrors: true,
 	}
 
-	root.PersistentFlags().StringP("prefix", "p", "kubevirt", "Prefix to identify containers")
-	root.PersistentFlags().StringP("podman-socket", "s", podman.DefaultSocket, "Path to podman-socket")
-	root.PersistentFlags().IntP("verbose", "v", 3, "verbosiness level [1,5)")
+	cmdutil.AddCommonOpts(root)
 
 	root.AddCommand(
 		NewPortCommand(),

@@ -131,8 +131,8 @@ func run(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	log.Infof("downloading all the images needed for %s", cluster)
-	err = hnd.PullClusterImages(okdRunOpts, "docker.io/"+cluster)
+	log.Noticef("downloading all the images needed for %s (from %s)", cluster, cOpts.Registry)
+	err = hnd.PullClusterImages(okdRunOpts, cOpts.Registry, cluster)
 	if err != nil || okdRunOpts.downloadOnly {
 		return err
 	}

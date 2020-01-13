@@ -17,8 +17,16 @@ type CommonOpts struct {
 	Prefix       string
 	PodmanSocket string
 	Verbose      int
+	Registry     string
 	IsTTY        bool
 	Color        bool
+}
+
+func AddCommonOpts(rootCmd *cobra.Command) {
+	rootCmd.PersistentFlags().StringP("prefix", "p", "kubevirt", "Prefix to identify containers")
+	rootCmd.PersistentFlags().StringP("podman-socket", "s", podman.DefaultSocket, "Path to podman-socket")
+	rootCmd.PersistentFlags().IntP("verbose", "v", 3, "verbosiness level [1,5)")
+	rootCmd.PersistentFlags().StringP("container-registry", "R", "docker.io", "Registry to pull cluster images from")
 }
 
 func GetCommonOpts(cmd *cobra.Command) (CommonOpts, error) {
@@ -31,6 +39,10 @@ func GetCommonOpts(cmd *cobra.Command) (CommonOpts, error) {
 		return CommonOpts{}, err
 	}
 	verbose, err := cmd.Flags().GetInt("verbose")
+	if err != nil {
+		return CommonOpts{}, err
+	}
+	registry, err := cmd.Flags().GetString("container-registry")
 	if err != nil {
 		return CommonOpts{}, err
 	}
@@ -52,6 +64,7 @@ func GetCommonOpts(cmd *cobra.Command) (CommonOpts, error) {
 		Verbose:      verbose,
 		IsTTY:        isatty.IsTerminal(os.Stderr.Fd()),
 		Color:        color,
+		Registry:     registry,
 	}, nil
 }
 
