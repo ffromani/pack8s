@@ -28,16 +28,17 @@ func (po pullOptions) WantsFluentd() bool {
 	return po.auxImages
 }
 
-var pullOpts pullOptions
-
 func NewPullCommand() *cobra.Command {
+	flags := &pullOptions{}
 	show := &cobra.Command{
 		Use:   "pull",
 		Short: "pull downloads an image from a registry",
-		RunE:  pullImage,
-		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return pullImage(cmd, flags, args)
+		},
+		Args: cobra.ExactArgs(1),
 	}
-	show.Flags().BoolVarP(&pullOpts.auxImages, "aux-images", "a", false, "pull the cluster auxiliary images")
+	show.Flags().BoolVarP(&flags.auxImages, "aux-images", "a", false, "pull the cluster auxiliary images")
 	return show
 }
 
@@ -65,7 +66,7 @@ func (tpp termProgressReporter) Report(ref string, elapsed, completed uint64, er
 
 }
 
-func pullImage(cmd *cobra.Command, args []string) error {
+func pullImage(cmd *cobra.Command, pullOpts *pullOptions, args []string) error {
 	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
