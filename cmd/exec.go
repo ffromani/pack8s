@@ -8,12 +8,6 @@ import (
 	"github.com/fromanirh/pack8s/cmd/cmdutil"
 )
 
-type execOptions struct {
-	commands []string
-}
-
-var execOpt execOptions
-
 // NewExecCommand runs given command inside container
 func NewExecCommand() *cobra.Command {
 	exec := &cobra.Command{

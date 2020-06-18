@@ -12,17 +12,19 @@ type showOptions struct {
 	containerIdsOnly bool
 }
 
-var showOpts showOptions
-
 func NewShowCommand() *cobra.Command {
+	flags := &showOptions{}
+
 	show := &cobra.Command{
 		Use:   "show",
 		Short: "show lists containers belonging to the cluster",
-		RunE:  showContainers,
-		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return showContainers(cmd, flags)
+		},
+		Args: cobra.NoArgs,
 	}
 
-	show.Flags().BoolVarP(&showOpts.containerIdsOnly, "ids", "i", false, "show only container ids")
+	show.Flags().BoolVarP(&flags.containerIdsOnly, "ids", "i", false, "show only container ids")
 
 	return show
 }
@@ -36,7 +38,7 @@ func NewShowCommand() *cobra.Command {
  * Logging OTOH is rarely explciitely asked by the user, and always as by product because something
  * else didn't go according to the plan.
  */
-func showContainers(cmd *cobra.Command, args []string) error {
+func showContainers(cmd *cobra.Command, showOpts *showOptions) error {
 	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err

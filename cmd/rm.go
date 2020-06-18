@@ -16,18 +16,19 @@ type rmOptions struct {
 	prune bool
 }
 
-var rmOpts rmOptions
-
 // NewRemoveCommand returns command to remove the cluster
 func NewRemoveCommand() *cobra.Command {
+	flags := &rmOptions{}
 	rm := &cobra.Command{
 		Use:   "rm",
 		Short: "rm deletes all traces of a cluster",
-		RunE:  remove,
-		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return remove(cmd, flags)
+		},
+		Args: cobra.NoArgs,
 	}
 
-	rm.Flags().BoolVarP(&rmOpts.prune, "prune", "P", false, "prune removes unused volumes on the host")
+	rm.Flags().BoolVarP(&flags.prune, "prune", "P", false, "prune removes unused volumes on the host")
 
 	return rm
 }
@@ -54,7 +55,7 @@ func (cl containerList) Swap(i, j int) {
 	cl[i], cl[j] = cl[j], cl[i]
 }
 
-func remove(cmd *cobra.Command, _ []string) error {
+func remove(cmd *cobra.Command, rmOpts *rmOptions) error {
 	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err

@@ -17,7 +17,7 @@ import (
 	"github.com/fromanirh/pack8s/cmd/cmdutil"
 )
 
-type okdRunOptions struct {
+type runOptions struct {
 	privileged     bool
 	masterMemory   string
 	masterCpu      string
@@ -38,50 +38,52 @@ type okdRunOptions struct {
 	downloadOnly   bool
 }
 
-func (ro okdRunOptions) WantsNFS() bool {
+func (ro runOptions) WantsNFS() bool {
 	return ro.nfsData != ""
 }
 
-func (ro okdRunOptions) WantsCeph() bool {
+func (ro runOptions) WantsCeph() bool {
 	return false
 }
 
-func (ro okdRunOptions) WantsFluentd() bool {
+func (ro runOptions) WantsFluentd() bool {
 	return false
 }
-
-var okdRunOpts okdRunOptions
 
 // NewRunCommand returns command that runs OKD cluster
 func NewRunCommand() *cobra.Command {
+	flags := &runOptions{}
+
 	run := &cobra.Command{
 		Use:   "okd",
 		Short: "run OKD cluster",
-		RunE:  run,
-		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd, flags, args)
+		},
+		Args: cobra.ExactArgs(1),
 	}
 
-	okdRunOpts.privileged = true // always
-	run.Flags().StringVar(&okdRunOpts.masterMemory, "master-memory", "12288", "amount of RAM in MB on the master")
-	run.Flags().StringVar(&okdRunOpts.masterCpu, "master-cpu", "4", "number of CPU cores on the master")
-	run.Flags().StringVar(&okdRunOpts.workers, "workers", "1", "number of cluster worker nodes to start")
-	run.Flags().StringVar(&okdRunOpts.workersMemory, "workers-memory", "6144", "amount of RAM in MB per worker")
-	run.Flags().StringVar(&okdRunOpts.workersCpu, "workers-cpu", "2", "number of CPU per worker")
-	run.Flags().UintVar(&okdRunOpts.secondaryNics, "secondary-nics", 0, "number of secondary nics to add")
-	run.Flags().StringVar(&okdRunOpts.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
-	run.Flags().StringVar(&okdRunOpts.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
-	run.Flags().UintVar(&okdRunOpts.registryPort, "registry-port", 0, "port on localhost for the docker registry")
-	run.Flags().UintVar(&okdRunOpts.ocpConsolePort, "ocp-console-port", 0, "port on localhost for the ocp console")
-	run.Flags().UintVar(&okdRunOpts.k8sPort, "k8s-port", 0, "port on localhost for the k8s cluster")
-	run.Flags().UintVar(&okdRunOpts.sshMasterPort, "ssh-master-port", 0, "port on localhost to ssh to master node")
-	run.Flags().UintVar(&okdRunOpts.sshWorkerPort, "ssh-worker-port", 0, "port on localhost to ssh to worker node")
-	run.Flags().BoolVar(&okdRunOpts.background, "background", false, "go to background after nodes are up")
-	run.Flags().BoolVar(&okdRunOpts.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
-	run.Flags().StringVar(&okdRunOpts.volume, "volume", "", "Bind mount a volume into the container")
+	flags.privileged = true // always
+	run.Flags().StringVar(&flags.masterMemory, "master-memory", "12288", "amount of RAM in MB on the master")
+	run.Flags().StringVar(&flags.masterCpu, "master-cpu", "4", "number of CPU cores on the master")
+	run.Flags().StringVar(&flags.workers, "workers", "1", "number of cluster worker nodes to start")
+	run.Flags().StringVar(&flags.workersMemory, "workers-memory", "6144", "amount of RAM in MB per worker")
+	run.Flags().StringVar(&flags.workersCpu, "workers-cpu", "2", "number of CPU per worker")
+	run.Flags().UintVar(&flags.secondaryNics, "secondary-nics", 0, "number of secondary nics to add")
+	run.Flags().StringVar(&flags.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
+	run.Flags().StringVar(&flags.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
+	run.Flags().UintVar(&flags.registryPort, "registry-port", 0, "port on localhost for the docker registry")
+	run.Flags().UintVar(&flags.ocpConsolePort, "ocp-console-port", 0, "port on localhost for the ocp console")
+	run.Flags().UintVar(&flags.k8sPort, "k8s-port", 0, "port on localhost for the k8s cluster")
+	run.Flags().UintVar(&flags.sshMasterPort, "ssh-master-port", 0, "port on localhost to ssh to master node")
+	run.Flags().UintVar(&flags.sshWorkerPort, "ssh-worker-port", 0, "port on localhost to ssh to worker node")
+	run.Flags().BoolVar(&flags.background, "background", false, "go to background after nodes are up")
+	run.Flags().BoolVar(&flags.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
+	run.Flags().StringVar(&flags.volume, "volume", "", "Bind mount a volume into the container")
 	return run
 }
 
-func run(cmd *cobra.Command, args []string) (err error) {
+func run(cmd *cobra.Command, okdRunOpts *runOptions, args []string) (err error) {
 	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err

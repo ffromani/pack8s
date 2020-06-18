@@ -60,37 +60,38 @@ func (ro runOptions) WantsFluentd() bool {
 	return ro.logDir != ""
 }
 
-var runOpts runOptions
-
 // NewRunCommand returns command that runs given cluster
 func NewRunCommand() *cobra.Command {
+	flags := &runOptions{}
 
 	run := &cobra.Command{
 		Use:   "run",
 		Short: "run a given cluster",
-		RunE:  run,
-		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd, flags, args)
+		},
+		Args: cobra.ExactArgs(1),
 	}
 
-	runOpts.privileged = true // always
-	run.Flags().UintVarP(&runOpts.nodes, "nodes", "n", 1, "number of cluster nodes to start")
-	run.Flags().StringVarP(&runOpts.memory, "memory", "m", "3096M", "amount of ram per node")
-	run.Flags().UintVarP(&runOpts.cpu, "cpu", "c", 2, "number of cpu cores per node")
-	run.Flags().UintVarP(&runOpts.secondaryNics, "secondary-nics", "", 0, "number of secondary nics to add")
-	run.Flags().StringVar(&runOpts.qemuArgs, "qemu-args", "", "additional qemu args to pass through to the nodes")
-	run.Flags().BoolVarP(&runOpts.background, "background", "b", false, "go to background after nodes are up")
-	run.Flags().BoolVarP(&runOpts.reverse, "reverse", "r", false, "revert node startup order")
-	run.Flags().BoolVar(&runOpts.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
-	run.Flags().StringVar(&runOpts.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
-	run.Flags().UintVar(&runOpts.vncPort, "vnc-port", 0, "port on localhost for vnc")
-	run.Flags().UintVar(&runOpts.registryPort, "registry-port", 0, "port on localhost for the docker registry")
-	run.Flags().UintVar(&runOpts.ocpPort, "ocp-port", 0, "port on localhost for the ocp cluster")
-	run.Flags().UintVar(&runOpts.k8sPort, "k8s-port", 0, "port on localhost for the k8s cluster")
-	run.Flags().UintVar(&runOpts.sshPort, "ssh-port", 0, "port on localhost for ssh server")
-	run.Flags().StringVar(&runOpts.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
-	run.Flags().StringVar(&runOpts.logDir, "log-to-dir", "", "enables aggregated cluster logging to the folder")
-	run.Flags().BoolVar(&runOpts.enableCeph, "enable-ceph", false, "enables dynamic storage provisioning using Ceph")
-	run.Flags().BoolVar(&runOpts.downloadOnly, "download-only", false, "download cluster images and exith")
+	flags.privileged = true // always
+	run.Flags().UintVarP(&flags.nodes, "nodes", "n", 1, "number of cluster nodes to start")
+	run.Flags().StringVarP(&flags.memory, "memory", "m", "3096M", "amount of ram per node")
+	run.Flags().UintVarP(&flags.cpu, "cpu", "c", 2, "number of cpu cores per node")
+	run.Flags().UintVarP(&flags.secondaryNics, "secondary-nics", "", 0, "number of secondary nics to add")
+	run.Flags().StringVar(&flags.qemuArgs, "qemu-args", "", "additional qemu args to pass through to the nodes")
+	run.Flags().BoolVarP(&flags.background, "background", "b", false, "go to background after nodes are up")
+	run.Flags().BoolVarP(&flags.reverse, "reverse", "r", false, "revert node startup order")
+	run.Flags().BoolVar(&flags.randomPorts, "random-ports", true, "expose all ports on random localhost ports")
+	run.Flags().StringVar(&flags.registryVolume, "registry-volume", "", "cache docker registry content in the specified volume")
+	run.Flags().UintVar(&flags.vncPort, "vnc-port", 0, "port on localhost for vnc")
+	run.Flags().UintVar(&flags.registryPort, "registry-port", 0, "port on localhost for the docker registry")
+	run.Flags().UintVar(&flags.ocpPort, "ocp-port", 0, "port on localhost for the ocp cluster")
+	run.Flags().UintVar(&flags.k8sPort, "k8s-port", 0, "port on localhost for the k8s cluster")
+	run.Flags().UintVar(&flags.sshPort, "ssh-port", 0, "port on localhost for ssh server")
+	run.Flags().StringVar(&flags.nfsData, "nfs-data", "", "path to data which should be exposed via nfs to the nodes")
+	run.Flags().StringVar(&flags.logDir, "log-to-dir", "", "enables aggregated cluster logging to the folder")
+	run.Flags().BoolVar(&flags.enableCeph, "enable-ceph", false, "enables dynamic storage provisioning using Ceph")
+	run.Flags().BoolVar(&flags.downloadOnly, "download-only", false, "download cluster images and exith")
 
 	run.AddCommand(
 		okd.NewRunCommand(),
@@ -98,7 +99,7 @@ func NewRunCommand() *cobra.Command {
 	return run
 }
 
-func run(cmd *cobra.Command, args []string) (err error) {
+func run(cmd *cobra.Command, runOpts *runOptions, args []string) (err error) {
 	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err

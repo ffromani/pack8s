@@ -50,25 +50,26 @@ type scpOptions struct {
 	sshUser       string
 }
 
-var scpOpts scpOptions
-
 // NewSCPCommand returns command to copy files via SSH from the cluster node to localhost
 func NewSCPCommand() *cobra.Command {
+	flags := &scpOptions{}
 
 	ssh := &cobra.Command{
 		Use:   "scp SRC DST",
 		Short: "scp copies files from master node to the local host",
-		RunE:  scp,
-		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return scp(cmd, flags, args)
+		},
+		Args: cobra.ExactArgs(2),
 	}
 
-	ssh.Flags().StringVar(&scpOpts.containerName, "container-name", "dnsmasq", "the container name to SSH copy from")
-	ssh.Flags().StringVar(&scpOpts.sshUser, "ssh-user", "vagrant", "the user that used to connect via SSH to the node")
+	ssh.Flags().StringVar(&flags.containerName, "container-name", "dnsmasq", "the container name to SSH copy from")
+	ssh.Flags().StringVar(&flags.sshUser, "ssh-user", "vagrant", "the user that used to connect via SSH to the node")
 
 	return ssh
 }
 
-func scp(cmd *cobra.Command, args []string) error {
+func scp(cmd *cobra.Command, scpOpts *scpOptions, args []string) error {
 	cOpts, err := cmdutil.GetCommonOpts(cmd)
 	if err != nil {
 		return err
